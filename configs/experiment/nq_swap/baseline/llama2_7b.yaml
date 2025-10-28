@@ -1,0 +1,5 @@
+# @package _global_
+defaults:
+  - override /model: llama2_7b
+  - override /data: nq_swap
+  - override /decoder: baseline
