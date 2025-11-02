@@ -67,15 +67,6 @@ class AttentionAnalyzer:
         }
     
     def identify_hallucination_heads(self, threshold: float = 0.1) -> Dict[str, Any]:
-        """
-        Identify attention heads that are most associated with hallucination
-        
-        Args:
-            threshold: Threshold for considering a head as significant
-            
-        Returns:
-            Dictionary with hallucination-related head analysis
-        """
         analysis = self.analyze_attention_by_correctness()
         
         if "error" in analysis:

@@ -1,12 +1,12 @@
-# MEQA Testing Configuration
-# Configuration for testing DeCoRe on MEQA dataset
+# MEQA Baseline Testing Configuration
+# Configuration for testing baseline models on MEQA dataset
 
 # Dataset configuration
 data:
   name: "MEQA"
   data_dir: "MEQA/data"
-  split: "dev"  # train, dev, test
-  num_samples: 100  # -1 for all samples
+  split: "dev"
+  num_samples: 100
   max_context_length: 4096
   max_question_length: 512
   max_explanation_length: 1024
@@ -26,19 +26,13 @@ model:
   configs:
     model_name_or_path: "meta-llama/Meta-Llama-3-8B-Instruct"
     max_seq_len: 4096
-    max_new_tokens: 512  # Longer for CoT reasoning
+    max_new_tokens: 100
 
-# Decoder configuration (DeCoRe)
+# Baseline decoder configuration
 decoder:
-  name: "DeCoReEntropy"
-  method: "DeCoReEntropy"
-  configs:
-    retrieval_heads_dir: "../retrieval_heads/"
-    num_retrieval_heads: 10
-    post_softmax: true
-    alpha_cap: null
-    scale_alpha: false
-    amateur_model_name_or_path: null
+  name: "Baseline"
+  method: "Baseline"
+  configs: {}
 
 # Evaluation configuration
 evaluation:
@@ -48,10 +42,11 @@ evaluation:
     - "explanation_f1"
     - "explanation_bleu"
   save_predictions: true
-  save_attentions: true
-  output_dir: "testing/outputs"
+  save_attentions: false
+  output_dir: "./outputs/baseline"
 
-wandb_project: "MEQA_DeCoRe_Testing_Optimized"
+# WandB configuration
+wandb_project: "MEQA_Baseline_Testing"
 wandb_entity: "yya040327"
 debug: true
 

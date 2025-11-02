@@ -1,3 +1,7 @@
+"""
+Test script for HotpotQA dataset
+"""
+
 import os
 import json
 import argparse
@@ -16,19 +20,9 @@ from src.factories import get_model
 from src.configs import ModelConfigs, DecoderConfigs, DataLoaderConfigs
 from transformers import AutoTokenizer
 from dataclasses import dataclass
-from meqa_dataset import load_meqa_dataset
-from meqa_metrics import MEQAMetrics
-from meqa_dataset import extract_answer
+from hotpotqa_dataset import load_hotpotqa_dataset, extract_answer
+from hotpotqa_metrics import HotpotQAMetrics
 from types import SimpleNamespace
-
-
-def _dict_to_namespace_with_get(d: Dict[str, Any]) -> Any:
-    """Wrap a dict so it supports both attribute access and dict-like get()."""
-    ns = SimpleNamespace(**d)
-    def _get(key: str, default=None):
-        return getattr(ns, key, default)
-    setattr(ns, 'get', _get)
-    return ns
 
 
 @dataclass
@@ -48,7 +42,16 @@ class DecoderConfig:
     amateur_model_name_or_path: str = None
 
 
-class MEQATester:
+def _dict_to_namespace_with_get(d: Dict[str, Any]) -> Any:
+    """Wrap a dict so it supports both attribute access and dict-like get()."""
+    ns = SimpleNamespace(**d)
+    def _get(key: str, default=None):
+        return getattr(ns, key, default)
+    setattr(ns, 'get', _get)
+    return ns
+
+
+class HotpotQATester:
     def __init__(self, config: Dict[str, Any]):
         self.config = config
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -60,7 +63,7 @@ class MEQATester:
         if self.tokenizer.pad_token is None:
             self.tokenizer.pad_token = self.tokenizer.eos_token
         
-        # Initialize model - need to restructure config for ModelConfigs
+        # Initialize model
         model_config = config["model"]
         model_configs_dict = model_config["configs"]
         self.model_configs = ModelConfigs(
@@ -76,8 +79,7 @@ class MEQATester:
         decoder_config = config["decoder"]
         decoder_configs_dict = decoder_config.get("configs", {})
         
-        # For Baseline models, use the typed DecoderConfig.
-        # For DeCoRe models, provide a namespace that supports both attribute access and .get().
+        # For DeCoRe models, pass configs as namespace; for baseline, use DecoderConfig
         if "decore" in decoder_config["method"].lower():
             self.decoder_configs = DecoderConfigs(
                 name=decoder_config["name"],
@@ -97,14 +99,13 @@ class MEQATester:
                     amateur_model_name_or_path=decoder_configs_dict.get("amateur_model_name_or_path", None)
                 )
             )
-
+        
         self.model = get_model(self.model_configs, self.decoder_configs)
         
         # Initialize dataset
-        # Construct full path to MEQA data
-        meqa_data_path = os.path.join("/cluster/scratch/yongyu/decore", config["data"]["data_dir"])
-        self.dataset = load_meqa_dataset(
-            data_path=meqa_data_path,
+        hotpotqa_data_path = os.path.join("/cluster/scratch/yongyu/decore", config["data"]["data_dir"])
+        self.dataset = load_hotpotqa_dataset(
+            data_path=hotpotqa_data_path,
             tokenizer=self.tokenizer,
             split=config["data"]["split"],
             num_samples=config["data"]["num_samples"],
@@ -125,7 +126,7 @@ class MEQATester:
             collate_fn=self.dataset.collate_fn,
         )
         
-        self.metrics = MEQAMetrics()
+        self.metrics = HotpotQAMetrics()
         self.output_dir = config["evaluation"]["output_dir"]
         os.makedirs(self.output_dir, exist_ok=True)
         
@@ -135,11 +136,11 @@ class MEQATester:
                 project=config["wandb_project"],
                 entity=config["wandb_entity"],
                 config=config,
-                name=f"MEQA_{config['decoder']['name']}_{config['data']['split']}"
+                name=f"HotpotQA_{config['decoder']['name']}_{config['data']['split']}"
             )
     
     def test(self) -> Dict[str, Any]:
-        print(f"Starting MEQA testing with {len(self.dataset)} examples")
+        print(f"Starting HotpotQA testing with {len(self.dataset)} examples")
         print(f"Model: {self.model_configs.name}")
         print(f"Decoder: {self.decoder_configs.name}")
         print(f"Device: {self.device}")
@@ -149,51 +150,46 @@ class MEQATester:
         # Run inference
         with torch.no_grad():
             for batch_idx, batch in enumerate(tqdm(self.data_loader, desc="Testing")):
-                try:
-                    # Generate predictions
-                    prediction = self.model.generate(batch)
-                    
-                    # Process batch results
-                    batch_size = len(batch["example_id"])
-                    for i in range(batch_size):
-                        # Get full text generation
-                        full_output = prediction["decoded_text"][i] if isinstance(prediction["decoded_text"], list) else prediction["decoded_text"]
-                        # Extract concise answer; keep full output for explanation metrics
-                        extracted = extract_answer(full_output, cot=False, exp=True, posthoc=False)
-                        if isinstance(extracted, tuple):
-                            short_answer = extracted[0]
-                        else:
-                            short_answer = extracted
-                        # Fallback to metrics' extractor if empty
-                        if not short_answer:
-                            try:
-                                short_answer = self.metrics.extract_answer_from_response(full_output)
-                            except Exception:
-                                short_answer = ""
-                        pred_dict = {
-                            "example_id": batch["example_id"][i],
-                            "question": batch["question"][i],
-                            "context": batch["context"][i],
-                            "predicted_answer": short_answer,
-                            "answer": batch["answer"][i],
-                            "explanation": batch["explanation"][i],
-                            "reference_explanation": batch["reference_explanation"][i],
-                            "predicted_explanation": full_output,
-                        }
-                        
-                        # Add attention information if available
-                        if "alphas" in prediction and prediction["alphas"] is not None:
-                            pred_dict["alphas"] = prediction["alphas"][i] if isinstance(prediction["alphas"], list) else prediction["alphas"]
-                        
-                        all_predictions.append(pred_dict)
-                    
-                    # Save intermediate results every 10 batches
-                    if (batch_idx + 1) % 10 == 0:
-                        self._save_intermediate_results(all_predictions, batch_idx + 1)
+                # Generate predictions
+                prediction = self.model.generate(batch)
                 
-                except Exception as e:
-                    print(f"Error processing batch {batch_idx}: {e}")
-                    continue
+                # Process batch results
+                batch_size = len(batch["example_id"])
+                for i in range(batch_size):
+                    # Get full text generation
+                    full_output = prediction["decoded_text"][i] if isinstance(prediction["decoded_text"], list) else prediction["decoded_text"]
+                    
+                    # Extract concise answer
+                    short_answer = extract_answer(full_output)
+                    
+                    # Fallback to metrics' extractor if empty
+                    if not short_answer:
+                        short_answer = self.metrics.extract_answer_from_response(full_output)
+                    
+                    # For supporting facts, we'd need to extract from the explanation
+                    # For now, use empty list (can be extended to parse from explanation)
+                    predicted_supporting_facts = []
+                    
+                    pred_dict = {
+                        "example_id": batch["example_id"][i],
+                        "question": batch["question"][i],
+                        "context": batch["context"][i],
+                        "predicted_answer": short_answer,
+                        "answer": batch["answer"][i],
+                        "supporting_facts": batch["supporting_facts"][i],
+                        "predicted_supporting_facts": predicted_supporting_facts,
+                        "predicted_explanation": full_output,
+                    }
+                    
+                    # Add attention information if available
+                    if "alphas" in prediction and prediction["alphas"] is not None:
+                        pred_dict["alphas"] = prediction["alphas"][i] if isinstance(prediction["alphas"], list) else prediction["alphas"]
+                    
+                    all_predictions.append(pred_dict)
+                
+                # Save intermediate results every 10 batches
+                if (batch_idx + 1) % 10 == 0:
+                    self._save_intermediate_results(all_predictions, batch_idx + 1)
         
         # Compute final metrics
         self.metrics.add_batch(all_predictions)
@@ -248,11 +244,11 @@ def load_config(config_path: str) -> Dict[str, Any]:
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Test models on MEQA dataset")
+    parser = argparse.ArgumentParser(description="Test models on HotpotQA dataset")
     parser.add_argument(
         "--config", 
         type=str, 
-        default="configs/meqa_config.yaml",
+        default="configs/hotpotqa_config.yaml",
         help="Path to configuration file"
     )
     parser.add_argument(
@@ -289,7 +285,7 @@ def main():
         config["data"]["split"] = args.split
     
     # Create tester and run
-    tester = MEQATester(config)
+    tester = HotpotQATester(config)
     metrics = tester.test()
     
     return metrics
@@ -297,3 +293,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

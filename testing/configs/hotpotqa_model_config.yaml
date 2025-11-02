@@ -1,0 +1,59 @@
+# HotpotQA Testing Configuration
+# Configuration for testing DeCoRe on HotpotQA dataset
+
+# Dataset configuration
+data:
+  name: "HotpotQA"
+  data_dir: "HotpotQA/data"
+  split: "dev"  # train, dev, test
+  num_samples: 100  # -1 for all samples
+  max_context_length: 4096
+  max_question_length: 512
+  max_explanation_length: 1024
+  use_chat_template: true
+
+# Data loader configuration
+data_loader:
+  batch_size: 1
+  num_workers: 1
+  drop_last: false
+  pin_memory: false
+
+# Model configuration
+model:
+  name: "LLaMA3-8b-Instruct"
+  model_type: "instruct"
+  configs:
+    model_name_or_path: "meta-llama/Meta-Llama-3-8B-Instruct"
+    max_seq_len: 4096
+    max_new_tokens: 512  # Longer for CoT reasoning
+
+# Decoder configuration (DeCoRe)
+decoder:
+  name: "DeCoReEntropy"
+  method: "DeCoReEntropy"
+  configs:
+    retrieval_heads_dir: "../retrieval_heads/"
+    num_retrieval_heads: 10
+    post_softmax: true
+    alpha_cap: null
+    scale_alpha: false
+    amateur_model_name_or_path: null
+
+# Evaluation configuration
+evaluation:
+  metrics:
+    - "exact_match"
+    - "f1_score"
+    - "supporting_facts_f1"
+  save_predictions: true
+  save_attentions: true
+  output_dir: "testing/outputs"
+
+wandb_project: "HotpotQA_DeCoRe_Testing"
+wandb_entity: "yya040327"
+debug: true
+
+# Random seed
+random_seed: 1234
+

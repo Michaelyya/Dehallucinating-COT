@@ -1,10 +1,10 @@
-# MEQA Baseline Testing Configuration
-# Configuration for testing baseline models on MEQA dataset
+# HotpotQA Baseline Testing Configuration
+# Configuration for testing baseline models on HotpotQA dataset
 
 # Dataset configuration
 data:
-  name: "MEQA"
-  data_dir: "MEQA/data"
+  name: "HotpotQA"
+  data_dir: "HotpotQA/data"
   split: "dev"
   num_samples: 100
   max_context_length: 4096
@@ -15,7 +15,7 @@ data:
 # Data loader configuration
 data_loader:
   batch_size: 1
-  num_workers: 4
+  num_workers: 1
   drop_last: false
   pin_memory: false
 
@@ -26,7 +26,7 @@ model:
   configs:
     model_name_or_path: "meta-llama/Meta-Llama-3-8B-Instruct"
     max_seq_len: 4096
-    max_new_tokens: 100
+    max_new_tokens: 512
 
 # Baseline decoder configuration
 decoder:
@@ -39,16 +39,16 @@ evaluation:
   metrics:
     - "exact_match"
     - "f1_score"
-    - "explanation_f1"
-    - "explanation_bleu"
+    - "supporting_facts_f1"
   save_predictions: true
   save_attentions: false
-  output_dir: "outputs/baseline"
+  output_dir: "outputs/hotpotqa_baseline"
 
 # WandB configuration
-wandb_project: "MEQA_Baseline_Testing"
+wandb_project: "HotpotQA_Baseline_Testing"
 wandb_entity: "yya040327"
 debug: true
 
 # Random seed
 random_seed: 1234
+

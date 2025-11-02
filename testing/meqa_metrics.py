@@ -28,7 +28,6 @@ class MEQAMetrics:
         self.reference_explanations = []
     
     def add_batch(self, predictions: List[Dict[str, Any]]):
-        """Add a batch of predictions for evaluation"""
         for pred in predictions:
             self.predictions.append(pred.get("predicted_answer", ""))
             self.references.append(pred.get("answer", ""))
