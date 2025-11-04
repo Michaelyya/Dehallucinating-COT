@@ -48,7 +48,7 @@ evaluation:
     - "supporting_facts_f1"
   save_predictions: true
   save_attentions: true
-  output_dir: "testing/outputs"
+  output_dir: "./outputs/hotpotqa_model"
 
 wandb_project: "HotpotQA_DeCoRe_Testing"
 wandb_entity: "yya040327"

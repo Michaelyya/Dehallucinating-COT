@@ -49,7 +49,7 @@ evaluation:
     - "explanation_bleu"
   save_predictions: true
   save_attentions: true
-  output_dir: "./outputs/meqa"
+  output_dir: "./outputs/meqa_model"
 
 wandb_project: "MEQA_DeCoRe_Testing_Optimized"
 wandb_entity: "yya040327"
