@@ -5,6 +5,7 @@
 python reasoning_head_detection.py     --reasoning_data ./collected_train.json     --model_path meta-llama/Llama-2-7b-hf     --s_len 1000     --e_len 10000!!
 ```
 
+##
 ![Overview of the DeCoRe workflow](docs/assets/DeCoRe_overview.png "DeCoRe")
 
 **Paper:** [https://arxiv.org/abs/2410.18860](https://arxiv.org/abs/2410.18860)
