@@ -1,0 +1,5 @@
+# @package _global_
+defaults:
+  - override /model: iti_llama3_8b_instruct
+  - override /data: memo_trap
+  - override /decoder: baseline

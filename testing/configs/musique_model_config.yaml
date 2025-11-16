@@ -1,0 +1,52 @@
+# MuSiQue Testing Configuration
+
+data:
+  name: "MuSiQue"
+  data_dir: "data/MuSiQue/musique_ans_v1.0_dev.jsonl"  # file path or directory
+  split: "dev"
+  num_samples: 100
+  max_context_length: 4096
+  max_question_length: 512
+  max_explanation_length: 1024
+  use_chat_template: true
+
+data_loader:
+  batch_size: 1
+  num_workers: 1
+  drop_last: false
+  pin_memory: false
+
+model:
+  name: "LLaMA3-8b-Instruct"
+  model_type: "instruct"
+  configs:
+    model_name_or_path: "meta-llama/Meta-Llama-3-8B-Instruct"
+    max_seq_len: 4096
+    max_new_tokens: 512
+
+decoder:
+  name: "DeCoReEntropy"
+  method: "DeCoReEntropy"
+  configs:
+    retrieval_heads_dir: "../retrieval_heads/"
+    num_retrieval_heads: 10
+    post_softmax: true
+    alpha_cap: null
+    scale_alpha: false
+    amateur_model_name_or_path: null
+
+evaluation:
+  metrics:
+    - "exact_match"
+    - "f1_score"
+  save_predictions: true
+  save_attentions: true
+  output_dir: "testing/outputs"
+
+wandb_project: "MuSiQue_DeCoRe_Testing"
+wandb_entity: "yya040327"
+debug: true
+
+random_seed: 1234
+
+

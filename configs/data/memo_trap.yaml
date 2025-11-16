@@ -1,0 +1,7 @@
+defaults:
+  - base_data_config
+
+name: MemoTrap
+data_dir: data/MemoTrap
+num_samples: -1
+variation: null

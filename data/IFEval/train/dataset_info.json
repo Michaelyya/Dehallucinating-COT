@@ -1,0 +1,155 @@
+{
+  "builder_name": "json",
+  "citation": "",
+  "config_name": "default",
+  "dataset_name": "ifeval",
+  "dataset_size": 281983,
+  "description": "",
+  "download_checksums": {
+    "hf://datasets/HuggingFaceH4/ifeval@8eea6e01f31913788bdd20ea8ffcff4d1541a761/input_data.jsonl": {
+      "num_bytes": 207112,
+      "checksum": null
+    }
+  },
+  "download_size": 207112,
+  "features": {
+    "key": {
+      "dtype": "int64",
+      "_type": "Value"
+    },
+    "prompt": {
+      "dtype": "string",
+      "_type": "Value"
+    },
+    "instruction_id_list": {
+      "feature": {
+        "dtype": "string",
+        "_type": "Value"
+      },
+      "_type": "Sequence"
+    },
+    "kwargs": [
+      {
+        "num_highlights": {
+          "dtype": "int64",
+          "_type": "Value"
+        },
+        "relation": {
+          "dtype": "string",
+          "_type": "Value"
+        },
+        "num_words": {
+          "dtype": "int64",
+          "_type": "Value"
+        },
+        "num_placeholders": {
+          "dtype": "int64",
+          "_type": "Value"
+        },
+        "prompt_to_repeat": {
+          "dtype": "string",
+          "_type": "Value"
+        },
+        "num_bullets": {
+          "dtype": "int64",
+          "_type": "Value"
+        },
+        "section_spliter": {
+          "dtype": "string",
+          "_type": "Value"
+        },
+        "num_sections": {
+          "dtype": "int64",
+          "_type": "Value"
+        },
+        "capital_relation": {
+          "dtype": "string",
+          "_type": "Value"
+        },
+        "capital_frequency": {
+          "dtype": "int64",
+          "_type": "Value"
+        },
+        "keywords": {
+          "feature": {
+            "dtype": "string",
+            "_type": "Value"
+          },
+          "_type": "Sequence"
+        },
+        "num_paragraphs": {
+          "dtype": "int64",
+          "_type": "Value"
+        },
+        "language": {
+          "dtype": "string",
+          "_type": "Value"
+        },
+        "let_relation": {
+          "dtype": "string",
+          "_type": "Value"
+        },
+        "letter": {
+          "dtype": "string",
+          "_type": "Value"
+        },
+        "let_frequency": {
+          "dtype": "int64",
+          "_type": "Value"
+        },
+        "end_phrase": {
+          "dtype": "string",
+          "_type": "Value"
+        },
+        "forbidden_words": {
+          "feature": {
+            "dtype": "string",
+            "_type": "Value"
+          },
+          "_type": "Sequence"
+        },
+        "keyword": {
+          "dtype": "string",
+          "_type": "Value"
+        },
+        "frequency": {
+          "dtype": "int64",
+          "_type": "Value"
+        },
+        "num_sentences": {
+          "dtype": "int64",
+          "_type": "Value"
+        },
+        "postscript_marker": {
+          "dtype": "string",
+          "_type": "Value"
+        },
+        "first_word": {
+          "dtype": "string",
+          "_type": "Value"
+        },
+        "nth_paragraph": {
+          "dtype": "int64",
+          "_type": "Value"
+        }
+      }
+    ]
+  },
+  "homepage": "",
+  "license": "",
+  "size_in_bytes": 489095,
+  "splits": {
+    "train": {
+      "name": "train",
+      "num_bytes": 281983,
+      "num_examples": 541,
+      "dataset_name": "ifeval"
+    }
+  },
+  "version": {
+    "version_str": "0.0.0",
+    "major": 0,
+    "minor": 0,
+    "patch": 0
+  }
+}

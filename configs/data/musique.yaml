@@ -1,0 +1,7 @@
+defaults:
+  - base_data_config
+
+name: MuSiQue
+data_dir: data/MuSiQue
+num_samples: -1
+variation: cot_closed_book

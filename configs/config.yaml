@@ -1,0 +1,17 @@
+defaults:
+  - base_config
+  - data: truthfulqa
+  - data_loader: default
+  - model: llama2_7b_chat
+  - decoder: baseline
+  - experiment: null
+  - _self_
+
+hydra:
+  output_subdir: null
+random_seed: 1234
+
+wandb_project: AstraZeneca_DeCoRe
+wandb_entity: aryopg
+
+debug: false

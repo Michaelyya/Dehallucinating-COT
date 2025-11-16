@@ -1,0 +1,46 @@
+# MuSiQue Baseline Testing Configuration
+
+data:
+  name: "MuSiQue"
+  data_dir: "data/MuSiQue/musique_ans_v1.0_dev.jsonl"
+  split: "dev"
+  num_samples: 100
+  max_context_length: 4096
+  max_question_length: 512
+  max_explanation_length: 1024
+  use_chat_template: true
+
+data_loader:
+  batch_size: 1
+  num_workers: 1
+  drop_last: false
+  pin_memory: false
+
+model:
+  name: "LLaMA3-8b-Instruct"
+  model_type: "instruct"
+  configs:
+    model_name_or_path: "meta-llama/Meta-Llama-3-8B-Instruct"
+    max_seq_len: 4096
+    max_new_tokens: 512
+
+decoder:
+  name: "Baseline"
+  method: "Baseline"
+  configs: {}
+
+evaluation:
+  metrics:
+    - "exact_match"
+    - "f1_score"
+  save_predictions: true
+  save_attentions: false
+  output_dir: "outputs/musique_baseline"
+
+wandb_project: "MuSiQue_Baseline_Testing"
+wandb_entity: "yya040327"
+debug: true
+
+random_seed: 1234
+
+

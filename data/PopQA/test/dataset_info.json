@@ -1,0 +1,102 @@
+{
+  "builder_name": "csv",
+  "citation": "",
+  "config_name": "default",
+  "dataset_name": "popqa",
+  "dataset_size": 5572166,
+  "description": "",
+  "download_checksums": {
+    "hf://datasets/akariasai/popqa@098765c79ea10a2cb19c828324e33281b8336ec0/test.tsv": {
+      "num_bytes": 5205200,
+      "checksum": null
+    }
+  },
+  "download_size": 5205200,
+  "features": {
+    "id": {
+      "dtype": "int64",
+      "_type": "Value"
+    },
+    "subj": {
+      "dtype": "string",
+      "_type": "Value"
+    },
+    "prop": {
+      "dtype": "string",
+      "_type": "Value"
+    },
+    "obj": {
+      "dtype": "string",
+      "_type": "Value"
+    },
+    "subj_id": {
+      "dtype": "int64",
+      "_type": "Value"
+    },
+    "prop_id": {
+      "dtype": "int64",
+      "_type": "Value"
+    },
+    "obj_id": {
+      "dtype": "int64",
+      "_type": "Value"
+    },
+    "s_aliases": {
+      "dtype": "string",
+      "_type": "Value"
+    },
+    "o_aliases": {
+      "dtype": "string",
+      "_type": "Value"
+    },
+    "s_uri": {
+      "dtype": "string",
+      "_type": "Value"
+    },
+    "o_uri": {
+      "dtype": "string",
+      "_type": "Value"
+    },
+    "s_wiki_title": {
+      "dtype": "string",
+      "_type": "Value"
+    },
+    "o_wiki_title": {
+      "dtype": "string",
+      "_type": "Value"
+    },
+    "s_pop": {
+      "dtype": "int64",
+      "_type": "Value"
+    },
+    "o_pop": {
+      "dtype": "int64",
+      "_type": "Value"
+    },
+    "question": {
+      "dtype": "string",
+      "_type": "Value"
+    },
+    "possible_answers": {
+      "dtype": "string",
+      "_type": "Value"
+    }
+  },
+  "homepage": "",
+  "license": "",
+  "size_in_bytes": 10777366,
+  "splits": {
+    "test": {
+      "name": "test",
+      "num_bytes": 5572166,
+      "num_examples": 14267,
+      "dataset_name": "popqa"
+    }
+  },
+  "version": {
+    "version_str": "0.0.0",
+    "major": 0,
+    "minor": 0,
+    "patch": 0
+  }
+}

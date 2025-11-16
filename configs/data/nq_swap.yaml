@@ -1,0 +1,7 @@
+defaults:
+  - base_data_config
+
+name: NQSwap
+data_dir: data/NQ-Swap/data
+num_samples: -1
+variation: null
