@@ -43,7 +43,7 @@ def main():
     parser.add_argument(
         "--backward_chaining_dir",
         type=str,
-        default="../../backward-chaining-circuits",
+        default="../backward-chaining-circuits",
         help="Path to backward-chaining-circuits directory"
     )
     parser.add_argument(
