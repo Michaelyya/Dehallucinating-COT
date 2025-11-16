@@ -10,6 +10,9 @@ import yaml
 import torch
 from transformers import AutoTokenizer, AutoModelForCausalLM
 
+# Set Hugging Face cache directory
+DEFAULT_CACHE_DIR = "/cluster/scratch/yongyu/cache"
+
 # Add parent directory to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -121,8 +124,21 @@ def main():
         type=str,
         help="YAML config file (overrides command line args)"
     )
+    parser.add_argument(
+        "--cache_dir",
+        type=str,
+        default=DEFAULT_CACHE_DIR,
+        help=f"Cache directory for models (default: {DEFAULT_CACHE_DIR})"
+    )
     
     args = parser.parse_args()
+    
+    # Set environment variables for Hugging Face cache
+    os.environ["HF_HOME"] = args.cache_dir
+    os.environ["TRANSFORMERS_CACHE"] = args.cache_dir
+    os.environ["HF_DATASETS_CACHE"] = args.cache_dir
+    os.makedirs(args.cache_dir, exist_ok=True)
+    print(f"Using cache directory: {args.cache_dir}")
     
     # Load config if provided
     if args.config:
@@ -132,10 +148,17 @@ def main():
         for key, value in config.items():
             if not hasattr(args, key) or getattr(args, key) is None:
                 setattr(args, key, value)
+        # Handle nested model config
+        if "model" in config and "cache_dir" in config["model"]:
+            args.cache_dir = config["model"]["cache_dir"]
     
     # Load model and tokenizer
     print(f"Loading model: {args.model_name}")
-    tokenizer = AutoTokenizer.from_pretrained(args.model_name)
+    print(f"Using cache directory: {args.cache_dir}")
+    tokenizer = AutoTokenizer.from_pretrained(
+        args.model_name,
+        cache_dir=args.cache_dir
+    )
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
     
@@ -171,7 +194,8 @@ def main():
         model = AutoModelForCausalLM.from_pretrained(
             args.model_name,
             torch_dtype=torch.bfloat16,
-            device_map="auto"
+            device_map="auto",
+            cache_dir=args.cache_dir
         ).eval()
     
     # Initialize discovery
@@ -180,7 +204,8 @@ def main():
         tokenizer=tokenizer,
         backward_chaining_dir=args.backward_chaining_dir,
         device=args.device,
-        scoring_method=args.scoring_method
+        scoring_method=args.scoring_method,
+        cache_dir=args.cache_dir
     )
     
     # Discover heads

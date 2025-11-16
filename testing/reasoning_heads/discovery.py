@@ -50,7 +50,8 @@ class ReasoningHeadDiscovery:
         backward_chaining_dir: str = "../backward-chaining-circuits",
         device: str = "cuda",
         scoring_method: str = "ablation",
-        scoring_config: Optional[Dict[str, Any]] = None
+        scoring_config: Optional[Dict[str, Any]] = None,
+        cache_dir: Optional[str] = None
     ):
         self.model = model
         self.tokenizer = tokenizer
@@ -58,6 +59,15 @@ class ReasoningHeadDiscovery:
         self.backward_chaining_dir = backward_chaining_dir
         self.scoring_method = scoring_method
         self.scoring_config = scoring_config or {}
+        self.cache_dir = cache_dir
+        
+        # Set cache directory if provided
+        if cache_dir:
+            import os
+            os.environ["HF_HOME"] = cache_dir
+            os.environ["TRANSFORMERS_CACHE"] = cache_dir
+            os.environ["HF_DATASETS_CACHE"] = cache_dir
+            os.makedirs(cache_dir, exist_ok=True)
         
         # Initialize scorer
         self.scorer = create_scorer(

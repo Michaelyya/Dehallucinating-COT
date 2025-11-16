@@ -10,6 +10,9 @@ from transformers import AutoTokenizer, AutoModelForCausalLM
 # Add paths
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+# Set default cache directory
+DEFAULT_CACHE_DIR = "/cluster/scratch/yongyu/cache"
+
 from reasoning_heads import (
     ReasoningHeadDiscovery,
     ReasoningHeadEvaluator,
@@ -17,23 +20,34 @@ from reasoning_heads import (
 )
 
 
-def example_discovery():
+def example_discovery(cache_dir: str = DEFAULT_CACHE_DIR):
     """Example: Discover reasoning heads."""
     print("="*60)
     print("Example: Discovering Reasoning Heads")
     print("="*60)
     
+    # Set cache directory
+    os.environ["HF_HOME"] = cache_dir
+    os.environ["TRANSFORMERS_CACHE"] = cache_dir
+    os.environ["HF_DATASETS_CACHE"] = cache_dir
+    os.makedirs(cache_dir, exist_ok=True)
+    
     # Load model
     model_name = "meta-llama/Meta-Llama-3-8B-Instruct"
     print(f"Loading model: {model_name}")
-    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    print(f"Using cache directory: {cache_dir}")
+    tokenizer = AutoTokenizer.from_pretrained(
+        model_name,
+        cache_dir=cache_dir
+    )
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
     
     model = AutoModelForCausalLM.from_pretrained(
         model_name,
         torch_dtype=torch.bfloat16,
-        device_map="auto"
+        device_map="auto",
+        cache_dir=cache_dir
     ).eval()
     
     # Initialize discovery
@@ -42,7 +56,8 @@ def example_discovery():
         tokenizer=tokenizer,
         backward_chaining_dir="../../backward-chaining-circuits",
         device="cuda" if torch.cuda.is_available() else "cpu",
-        scoring_method="ablation"
+        scoring_method="ablation",
+        cache_dir=cache_dir
     )
     
     # Discover heads
@@ -64,29 +79,41 @@ def example_discovery():
               f"score={head.score:.4f}, subtask={head.subtask}")
 
 
-def example_evaluation():
+def example_evaluation(cache_dir: str = DEFAULT_CACHE_DIR):
     """Example: Evaluate discovered heads on benchmarks."""
     print("\n" + "="*60)
     print("Example: Evaluating on Benchmarks")
     print("="*60)
     
+    # Set cache directory
+    os.environ["HF_HOME"] = cache_dir
+    os.environ["TRANSFORMERS_CACHE"] = cache_dir
+    os.environ["HF_DATASETS_CACHE"] = cache_dir
+    os.makedirs(cache_dir, exist_ok=True)
+    
     # Load model (same as discovery)
     model_name = "meta-llama/Meta-Llama-3-8B-Instruct"
-    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    print(f"Using cache directory: {cache_dir}")
+    tokenizer = AutoTokenizer.from_pretrained(
+        model_name,
+        cache_dir=cache_dir
+    )
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
     
     model = AutoModelForCausalLM.from_pretrained(
         model_name,
         torch_dtype=torch.bfloat16,
-        device_map="auto"
+        device_map="auto",
+        cache_dir=cache_dir
     ).eval()
     
     # Initialize discovery and evaluator
     discovery = ReasoningHeadDiscovery(
         model=model,
         tokenizer=tokenizer,
-        backward_chaining_dir="../../backward-chaining-circuits"
+        backward_chaining_dir="../../backward-chaining-circuits",
+        cache_dir=cache_dir
     )
     
     # Load discovered heads
@@ -143,25 +170,37 @@ def example_evaluation():
     print(f"Report saved to example_report.md")
 
 
-def example_subtask_analysis():
+def example_subtask_analysis(cache_dir: str = DEFAULT_CACHE_DIR):
     """Example: Analyze specific subtask."""
     print("\n" + "="*60)
     print("Example: Subtask Analysis")
     print("="*60)
     
+    # Set cache directory
+    os.environ["HF_HOME"] = cache_dir
+    os.environ["TRANSFORMERS_CACHE"] = cache_dir
+    os.environ["HF_DATASETS_CACHE"] = cache_dir
+    os.makedirs(cache_dir, exist_ok=True)
+    
     # Load model
     model_name = "meta-llama/Meta-Llama-3-8B-Instruct"
-    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    print(f"Using cache directory: {cache_dir}")
+    tokenizer = AutoTokenizer.from_pretrained(
+        model_name,
+        cache_dir=cache_dir
+    )
     model = AutoModelForCausalLM.from_pretrained(
         model_name,
         torch_dtype=torch.bfloat16,
-        device_map="auto"
+        device_map="auto",
+        cache_dir=cache_dir
     ).eval()
     
     discovery = ReasoningHeadDiscovery(
         model=model,
         tokenizer=tokenizer,
-        backward_chaining_dir="../../backward-chaining-circuits"
+        backward_chaining_dir="../../backward-chaining-circuits",
+        cache_dir=cache_dir
     )
     
     # Get heads for specific subtask
@@ -193,15 +232,21 @@ if __name__ == "__main__":
         default="all",
         help="Which step to run"
     )
+    parser.add_argument(
+        "--cache_dir",
+        type=str,
+        default=DEFAULT_CACHE_DIR,
+        help=f"Cache directory for models (default: {DEFAULT_CACHE_DIR})"
+    )
     
     args = parser.parse_args()
     
     if args.step in ["discovery", "all"]:
-        example_discovery()
+        example_discovery(cache_dir=args.cache_dir)
     
     if args.step in ["evaluation", "all"]:
-        example_evaluation()
+        example_evaluation(cache_dir=args.cache_dir)
     
     if args.step in ["analysis", "all"]:
-        example_subtask_analysis()
+        example_subtask_analysis(cache_dir=args.cache_dir)
 

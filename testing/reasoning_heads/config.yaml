@@ -4,6 +4,7 @@
 model:
   name: "meta-llama/Meta-Llama-3-8B-Instruct"
   device: "cuda"  # or "cpu"
+  cache_dir: "/cluster/scratch/yongyu/cache"  # Hugging Face cache directory
 
 # Discovery configuration
 discovery:
