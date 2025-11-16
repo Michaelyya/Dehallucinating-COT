@@ -1,7 +1,3 @@
-"""
-Test script for MuSiQue dataset
-"""
-
 import os
 import json
 import argparse

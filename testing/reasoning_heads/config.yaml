@@ -1,0 +1,40 @@
+# Configuration for Reasoning Head Discovery and Evaluation
+
+# Model configuration
+model:
+  name: "meta-llama/Meta-Llama-3-8B-Instruct"
+  device: "cuda"  # or "cpu"
+
+# Discovery configuration
+discovery:
+  backward_chaining_dir: "../backward-chaining-circuits"
+  scoring_method: "ablation"  # Options: ablation, causal_patching, mutual_info
+  n_examples_per_subtask: 20
+  top_k_heads_per_subtask: 10
+  min_score: 0.1
+  min_confidence: 0.3
+
+# Evaluation configuration
+evaluation:
+  benchmark_configs:
+    hotpotqa:
+      main: "../configs/hotpotqa_model_config.yaml"
+      baseline: "../configs/hotpotqa_baseline_config.yaml"
+    meqa:
+      main: "../configs/meqa_model_config.yaml"
+      baseline: "../configs/meqa_baseline_config.yaml"
+    musique:
+      main: "../configs/musique_model_config.yaml"
+      baseline: "../configs/musique_baseline_config.yaml"
+  
+  subtask_filter: null  # Optional: filter heads by subtask name
+  top_k_heads: null  # Optional: limit number of heads to mask
+
+# Output configuration
+output:
+  discovered_heads_file: "discovered_heads.json"
+  evaluation_results_file: "evaluation_results.json"
+  report_file: "evaluation_report.md"
+  traces_dir: "./traces"
+  results_dir: "./evaluation_results"
+
