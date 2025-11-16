@@ -78,6 +78,22 @@ class ReasoningHeadDiscovery:
             **self.scoring_config
         )
         
+        # Resolve backward_chaining_dir path
+        if not os.path.isabs(backward_chaining_dir):
+            # Try relative to current working directory
+            abs_path = os.path.abspath(backward_chaining_dir)
+            if os.path.exists(abs_path):
+                backward_chaining_dir = abs_path
+            else:
+                # Try relative to this file's directory
+                base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+                abs_path = os.path.join(base_dir, backward_chaining_dir.lstrip("./"))
+                if os.path.exists(abs_path):
+                    backward_chaining_dir = abs_path
+        
+        self.backward_chaining_dir = backward_chaining_dir
+        print(f"Using backward-chaining directory: {self.backward_chaining_dir}")
+        
         # Discover subtasks
         self.subtasks = discover_subtasks(backward_chaining_dir)
         print(f"Discovered {len(self.subtasks)} subtasks")
@@ -106,20 +122,57 @@ class ReasoningHeadDiscovery:
         if dataset_file is None:
             dataset_file = os.path.join(self.backward_chaining_dir, "dataset.txt")
         
+        # Resolve absolute path
+        if not os.path.isabs(dataset_file):
+            # Try relative to backward_chaining_dir first
+            abs_path = os.path.join(self.backward_chaining_dir, dataset_file)
+            if os.path.exists(abs_path):
+                dataset_file = abs_path
+            else:
+                # Try relative to current working directory
+                abs_path = os.path.abspath(dataset_file)
+                if os.path.exists(abs_path):
+                    dataset_file = abs_path
+        
+        print(f"Using dataset file: {dataset_file}")
+        if not os.path.exists(dataset_file):
+            print(f"ERROR: Dataset file not found at {dataset_file}")
+            print(f"Please check the path. Backward-chaining dir: {self.backward_chaining_dir}")
+            return []
+        
         all_heads = []
+        
+        # First, try to load some examples to verify the dataset works
+        print(f"\nLoading examples from dataset...")
+        all_examples = []
+        try:
+            with open(dataset_file, 'r') as f:
+                for i, line in enumerate(f):
+                    if i >= n_examples_per_subtask * 2:  # Load a few extra
+                        break
+                    parsed = parse_backward_chaining_example(line.strip())
+                    if parsed:
+                        all_examples.append(parsed)
+            print(f"Successfully loaded {len(all_examples)} examples from dataset")
+        except Exception as e:
+            print(f"ERROR: Could not load dataset: {e}")
+            import traceback
+            traceback.print_exc()
+            return []
+        
+        if len(all_examples) == 0:
+            print("ERROR: No valid examples found in dataset file")
+            return []
         
         for subtask in self.subtasks:
             print(f"\nDiscovering heads for subtask: {subtask.name}")
             
-            # Get examples for this subtask
-            examples = get_subtask_examples(
-                subtask,
-                dataset_file,
-                max_examples=n_examples_per_subtask
-            )
+            # Use all examples for now (they're all relevant to backward-chaining)
+            # In the future, we can filter by subtask type
+            examples = all_examples[:n_examples_per_subtask]
             
             if len(examples) == 0:
-                print(f"  Warning: No examples found for {subtask.name}")
+                print(f"  Warning: No examples available for {subtask.name}")
                 continue
             
             print(f"  Using {len(examples)} examples")

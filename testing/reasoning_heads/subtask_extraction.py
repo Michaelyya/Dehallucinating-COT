@@ -45,41 +45,65 @@ class Subtask:
         }
 
 
-def parse_backward_chaining_example(example_str: str) -> Dict[str, Any]:
+def parse_backward_chaining_example(example_str: str) -> Optional[Dict[str, Any]]:
     """
     Parse a backward-chaining example string.
     
     Format: "edge1,edge2,...|goal:path1>path2>..."
     """
+    if not example_str or not example_str.strip():
+        return None
+    
+    example_str = example_str.strip()
     parts = example_str.split("|")
     if len(parts) != 2:
         return None
     
-    edges_str = parts[0]
-    goal_path_str = parts[1]
+    edges_str = parts[0].strip()
+    goal_path_str = parts[1].strip()
+    
+    if not edges_str or not goal_path_str:
+        return None
     
     # Parse edges
     edges = []
     for edge_str in edges_str.split(","):
+        edge_str = edge_str.strip()
         if ">" in edge_str:
-            out_node, in_node = edge_str.split(">")
-            edges.append((int(out_node), int(in_node)))
+            try:
+                out_node, in_node = edge_str.split(">")
+                edges.append((int(out_node.strip()), int(in_node.strip())))
+            except (ValueError, AttributeError):
+                continue
+    
+    if len(edges) == 0:
+        return None
     
     # Parse goal and path
     goal_path_parts = goal_path_str.split(":")
     if len(goal_path_parts) != 2:
         return None
     
-    goal = int(goal_path_parts[0])
-    path = [int(p) for p in goal_path_parts[1].split(">") if p]
+    try:
+        goal = int(goal_path_parts[0].strip())
+        path_str = goal_path_parts[1].strip()
+        path = [int(p.strip()) for p in path_str.split(">") if p.strip()]
+    except (ValueError, AttributeError):
+        return None
+    
+    try:
+        graph = _build_graph(edges)
+    except Exception:
+        graph = None
     
     return {
         "edges": edges,
         "goal": goal,
         "path": path,
-        "graph": _build_graph(edges),
+        "graph": graph,
         "source_nodes": set([e[0] for e in edges]),
         "target_nodes": set([e[1] for e in edges]),
+        "raw_string": example_str  # Keep original for debugging
     }
 
 
