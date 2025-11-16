@@ -9,7 +9,12 @@ from typing import List, Dict, Any, Optional, Tuple
 from dataclasses import dataclass, asdict
 import numpy as np
 
-from .subtask_extraction import discover_subtasks, Subtask, get_subtask_examples
+from .subtask_extraction import (
+    discover_subtasks, 
+    Subtask, 
+    get_subtask_examples,
+    parse_backward_chaining_example
+)
 from .head_scoring import HeadScorer, HeadScore, create_scorer
 
 
