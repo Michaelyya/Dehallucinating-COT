@@ -1,7 +1,3 @@
-"""
-Main discovery framework for identifying reasoning heads.
-"""
-
 import os
 import json
 import torch

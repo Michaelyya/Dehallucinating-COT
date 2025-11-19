@@ -87,17 +87,17 @@ class HeadScorer(ABC):
         scores = []
         from tqdm import tqdm
         
-        # Debug mode for first layer only
-        debug_mode = False
+        # Debug mode for first head only
+        first_head = True
         
         for layer in tqdm(range(max_layers), desc="  Layers", leave=False):
             for head in range(max_heads_per_layer):
                 try:
                     # Only debug first head of first layer
-                    debug = debug_mode and layer == 0 and head == 0
+                    debug = first_head and layer == 0 and head == 0
                     score = self.score_head(layer, head, examples, subtask_name, debug=debug)
                     scores.append(score)
-                    debug_mode = False  # Turn off after first
+                    first_head = False  # Turn off after first
                 except Exception as e:
                     print(f"\n  Warning: Could not score layer {layer}, head {head}: {e}")
                     continue
@@ -133,14 +133,14 @@ class AblationScorer(HeadScorer):
         scoring_examples = examples[:min(3, len(examples))]
         
         # Get baseline performance (only debug first head to avoid spam)
-        baseline_debug = debug and layer == 0 and head == 0
+        baseline_debug = debug
         baseline_metrics = self._evaluate_subtask(
             scoring_examples, subtask_name, ablated_heads=None, debug=baseline_debug
         )
         
-        # Get performance with head ablated
+        # Get performance with head ablated (also debug if in debug mode)
         ablated_metrics = self._evaluate_subtask(
-            scoring_examples, subtask_name, ablated_heads=[(layer, head)], debug=False
+            scoring_examples, subtask_name, ablated_heads=[(layer, head)], debug=debug
         )
         
         # Calculate score as relative performance drop
@@ -156,7 +156,7 @@ class AblationScorer(HeadScorer):
         # Confidence based on number of examples and consistency
         confidence = min(len(scoring_examples) / 10.0, 1.0)
         
-        if baseline_debug:
+        if debug:
             print(f"\n    Head scoring (Layer {layer}, Head {head}):")
             print(f"      Baseline accuracy: {baseline_acc:.4f}")
             print(f"      Ablated accuracy: {ablated_acc:.4f}")
@@ -218,11 +218,16 @@ class AblationScorer(HeadScorer):
                 
                 # Debug output for first example
                 if debug and total == 1:
-                    print(f"\n    DEBUG - First example:")
-                    print(f"      Input: {input_text[:100]}...")
-                    print(f"      Expected path: {'>'.join([str(p) for p in example.get('path', [])[:10]])}")
-                    print(f"      Model output: {decoded[:200]}")
+                    print(f"\n    DEBUG - First example evaluation:")
+                    print(f"      Input: {input_text}")
+                    print(f"      Expected path: {'>'.join([str(p) for p in example.get('path', [])])}")
+                    print(f"      Model output (full): {decoded}")
+                    print(f"      Model output length: {len(decoded)} chars")
                     print(f"      Correct: {is_correct}")
+                    if ablated_heads:
+                        print(f"      Ablated heads: {ablated_heads}")
+                    else:
+                        print(f"      Mode: BASELINE (no heads ablated)")
                     
             except Exception as e:
                 # Skip examples that fail
