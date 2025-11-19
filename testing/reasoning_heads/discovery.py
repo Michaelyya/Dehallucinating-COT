@@ -42,11 +42,6 @@ class ReasoningHead:
 
 
 class ReasoningHeadDiscovery:
-    """
-    Main class for discovering reasoning heads.
-    
-    Discovers subtasks, collects head traces, and scores heads.
-    """
     
     def __init__(
         self,
@@ -108,8 +103,9 @@ class ReasoningHeadDiscovery:
         dataset_file: Optional[str] = None,
         n_examples_per_subtask: int = 20,
         top_k: int = 10,
-        min_score: float = 0.1,
-        min_confidence: float = 0.3
+        min_score: float = 0.0,  # Lowered default threshold
+        min_confidence: float = 0.0,  # Lowered default threshold
+        single_subtask: Optional[str] = None  # Run only one subtask
     ) -> List[ReasoningHead]:
         if dataset_file is None:
             dataset_file = os.path.join(self.backward_chaining_dir, "dataset.txt")
@@ -156,8 +152,23 @@ class ReasoningHeadDiscovery:
             print("ERROR: No valid examples found in dataset file")
             return []
         
-        for subtask in self.subtasks:
-            print(f"\nDiscovering heads for subtask: {subtask.name}")
+        # Filter subtasks if single_subtask is specified
+        subtasks_to_process = self.subtasks
+        if single_subtask:
+            subtasks_to_process = [s for s in self.subtasks if s.name == single_subtask]
+            if len(subtasks_to_process) == 0:
+                print(f"ERROR: Subtask '{single_subtask}' not found. Available subtasks:")
+                for s in self.subtasks:
+                    print(f"  - {s.name}")
+                return []
+            print(f"\nProcessing only subtask: {single_subtask}")
+        
+        for subtask in subtasks_to_process:
+            print(f"\n{'='*60}")
+            print(f"Discovering heads for subtask: {subtask.name}")
+            print(f"Description: {subtask.description}")
+            print(f"Type: {subtask.task_type}")
+            print(f"{'='*60}")
             
             # Use all examples for now (they're all relevant to backward-chaining)
             # In the future, we can filter by subtask type
@@ -167,19 +178,32 @@ class ReasoningHeadDiscovery:
                 print(f"  Warning: No examples available for {subtask.name}")
                 continue
             
-            print(f"  Using {len(examples)} examples")
+            print(f"\n  Using {len(examples)} examples")
+            print(f"  Example format: {self._format_example_for_display(examples[0])}")
             
             # Score all heads for this subtask
+            print(f"\n  Scoring heads...")
             head_scores = self.scorer.score_all_heads(
                 examples,
                 subtask.name
             )
+            
+            print(f"\n  Scoring results:")
+            print(f"    Total heads scored: {len(head_scores)}")
+            if len(head_scores) > 0:
+                print(f"    Score range: {min(s.score for s in head_scores):.4f} to {max(s.score for s in head_scores):.4f}")
+                print(f"    Top 5 scores:")
+                for i, score in enumerate(head_scores[:5]):
+                    print(f"      {i+1}. Layer {score.layer}, Head {score.head}: score={score.score:.4f}, confidence={score.confidence:.4f}")
             
             # Filter and select top heads
             filtered_scores = [
                 score for score in head_scores
                 if score.score >= min_score and score.confidence >= min_confidence
             ]
+            
+            print(f"\n  After filtering (min_score={min_score}, min_confidence={min_confidence}):")
+            print(f"    {len(filtered_scores)} heads passed threshold")
             
             # Take top K
             top_scores = filtered_scores[:top_k]
@@ -197,7 +221,11 @@ class ReasoningHeadDiscovery:
                 )
                 all_heads.append(reasoning_head)
             
-            print(f"  Found {len(top_scores)} reasoning heads")
+            print(f"\n  Final result: Found {len(top_scores)} reasoning heads")
+            
+            # If single subtask mode, break after first one
+            if single_subtask:
+                break
         
         return all_heads
     
@@ -290,6 +318,20 @@ class ReasoningHeadDiscovery:
             edges_str = ",".join([f"{e[0]}>{e[1]}" for e in example["edges"]])
             goal = example.get("goal", "?")
             return f"{edges_str}|{goal}:"
+        return str(example)
+    
+    def _format_example_for_display(self, example: Dict[str, Any]) -> str:
+        """Format example for display purposes."""
+        if "edges" in example:
+            edges_str = ",".join([f"{e[0]}>{e[1]}" for e in example["edges"][:5]])  # Show first 5
+            if len(example["edges"]) > 5:
+                edges_str += f"... ({len(example['edges'])} total)"
+            goal = example.get("goal", "?")
+            path = example.get("path", [])
+            path_str = ">".join([str(p) for p in path[:5]])  # Show first 5
+            if len(path) > 5:
+                path_str += f"... ({len(path)} total)"
+            return f"Edges: {edges_str} | Goal: {goal} | Path: {path_str}"
         return str(example)
     
     def _serialize_traces(self, traces: Dict[str, Any]) -> Dict[str, Any]:

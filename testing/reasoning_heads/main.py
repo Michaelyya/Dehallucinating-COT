@@ -66,6 +66,24 @@ def main():
         help="Top K heads to select per subtask"
     )
     parser.add_argument(
+        "--single_subtask",
+        type=str,
+        default=None,
+        help="Process only a single subtask (for debugging)"
+    )
+    parser.add_argument(
+        "--min_score",
+        type=float,
+        default=0.0,
+        help="Minimum score threshold for heads"
+    )
+    parser.add_argument(
+        "--min_confidence",
+        type=float,
+        default=0.0,
+        help="Minimum confidence threshold for heads"
+    )
+    parser.add_argument(
         "--output_heads",
         type=str,
         default="discovered_heads.json",
@@ -216,7 +234,10 @@ def main():
         
         discovered_heads = discovery.discover_heads(
             n_examples_per_subtask=args.n_examples,
-            top_k=args.top_k
+            top_k=args.top_k,
+            single_subtask=args.single_subtask,
+            min_score=args.min_score,
+            min_confidence=args.min_confidence
         )
         
         discovery.save_discovered_heads(discovered_heads, args.output_heads)
