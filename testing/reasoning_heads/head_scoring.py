@@ -227,9 +227,11 @@ class AblationScorer(HeadScorer):
                     else:
                         output = self.model.generate(
                             input_ids,
-                            max_new_tokens=50,  # Increased for longer paths
+                            max_new_tokens=100,  # Increased for longer paths (can be 15+ nodes)
                             do_sample=False,
+                            temperature=1.0,  # Not used when do_sample=False, but explicit
                             pad_token_id=self.tokenizer.eos_token_id,
+                            eos_token_id=self.tokenizer.eos_token_id,
                             use_cache=True
                         )
                 
@@ -243,11 +245,21 @@ class AblationScorer(HeadScorer):
                 generated_tokens = output[0][input_length:]  # Only the newly generated tokens
                 generated_text = self.tokenizer.decode(generated_tokens, skip_special_tokens=True)
                 
+                # For chat templates, the output might include "assistant" header
+                # Strip common chat template artifacts
+                import re
+                # Remove assistant header if present
+                generated_text = re.sub(r'^assistant\s*\n*\s*', '', generated_text, flags=re.IGNORECASE)
+                generated_text = generated_text.strip()
+                
                 # Also try to extract by removing the input text from decoded output
                 # Sometimes tokenizer decoding includes the input, so we strip it
                 if input_text in decoded_full:
                     # Remove the input part
                     generated_text_alt = decoded_full.replace(input_text, "", 1).strip()
+                    # Remove assistant header if present
+                    generated_text_alt = re.sub(r'^assistant\s*\n*\s*', '', generated_text_alt, flags=re.IGNORECASE)
+                    generated_text_alt = generated_text_alt.strip()
                     # Use the longer one (more complete generation)
                     if len(generated_text_alt) > len(generated_text):
                         generated_text = generated_text_alt
@@ -350,9 +362,11 @@ class AblationScorer(HeadScorer):
             try:
                 output = self.model.generate(
                     input_ids,
-                    max_new_tokens=50,
+                    max_new_tokens=100,  # Increased for longer paths
                     do_sample=False,
+                    temperature=1.0,  # Not used when do_sample=False, but explicit
                     pad_token_id=self.tokenizer.eos_token_id,
+                    eos_token_id=self.tokenizer.eos_token_id,
                     block_list=ablated_heads
                 )
                 return output
@@ -388,20 +402,37 @@ class AblationScorer(HeadScorer):
             
             # Check if tokenizer has a chat template (for instruct models)
             if hasattr(self.tokenizer, 'apply_chat_template') and self.tokenizer.chat_template is not None:
-                # Use chat template for instruct models
+                # Use chat template for instruct models with few-shot examples
+                # Find root node (node that appears as source but never as target)
+                source_nodes = set([e[0] for e in example.get("edges", [])])
+                target_nodes = set([e[1] for e in example.get("edges", [])])
+                root_nodes = source_nodes - target_nodes
+                root_node = list(root_nodes)[0] if root_nodes else "?"
+                
+                # Create a few-shot example from the current example if we have the path
+                example_path = example.get("path", [])
+                example_path_str = ">".join([str(p) for p in example_path]) if example_path else None
+                
+                user_content = f"Given a directed graph with edges and a goal node, find the complete path from the root node to the goal node.\n\n"
+                user_content += f"Edges: {edges_str}\n"
+                user_content += f"Root node: {root_node}\n"
+                user_content += f"Goal node: {goal}\n\n"
+                user_content += "Find the path from root to goal using backward-chaining. Output the complete path as a sequence of node numbers separated by '>', starting from the root and ending at the goal.\n\n"
+                user_content += "Path:"
+                
                 messages = [
                     {
                         "role": "system",
                         "content": (
                             "You are a helpful assistant that solves backward-chaining reasoning problems. "
-                            "Given a set of directed edges and a goal node, find the path from the root node to the goal node. "
-                            "The path should be a sequence of node numbers separated by '>', starting from the root and ending at the goal. "
-                            "Output only the path sequence, nothing else."
+                            "Given a directed graph with edges and a goal node, you need to find the complete path from the root node (the node that has no incoming edges) to the goal node. "
+                            "Use backward-chaining: start from the goal and work backwards to find which nodes lead to it, then construct the forward path from root to goal. "
+                            "Output ONLY the path sequence as numbers separated by '>', nothing else. For example: '10>7>3>5>0>1>2>6>14>12>15>9>11>13'"
                         )
                     },
                     {
                         "role": "user",
-                        "content": f"Edges: {edges_str}\nGoal: {goal}\nPath:"
+                        "content": user_content
                     }
                 ]
                 # Apply chat template and return as text (not tokenized)
