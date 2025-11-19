@@ -87,11 +87,17 @@ class HeadScorer(ABC):
         scores = []
         from tqdm import tqdm
         
+        # Debug mode for first layer only
+        debug_mode = False
+        
         for layer in tqdm(range(max_layers), desc="  Layers", leave=False):
             for head in range(max_heads_per_layer):
                 try:
-                    score = self.score_head(layer, head, examples, subtask_name)
+                    # Only debug first head of first layer
+                    debug = debug_mode and layer == 0 and head == 0
+                    score = self.score_head(layer, head, examples, subtask_name, debug=debug)
                     scores.append(score)
+                    debug_mode = False  # Turn off after first
                 except Exception as e:
                     print(f"\n  Warning: Could not score layer {layer}, head {head}: {e}")
                     continue
@@ -118,29 +124,43 @@ class AblationScorer(HeadScorer):
         layer: int,
         head: int,
         examples: List[Dict[str, Any]],
-        subtask_name: str
+        subtask_name: str,
+        debug: bool = False
     ) -> HeadScore:
         """Score head by ablation effect."""
         # Use a smaller subset for faster scoring
         # For initial discovery, use just 2-3 examples per head
         scoring_examples = examples[:min(3, len(examples))]
         
-        # Get baseline performance
-        baseline_metrics = self._evaluate_subtask(scoring_examples, subtask_name, ablated_heads=None)
+        # Get baseline performance (only debug first head to avoid spam)
+        baseline_debug = debug and layer == 0 and head == 0
+        baseline_metrics = self._evaluate_subtask(
+            scoring_examples, subtask_name, ablated_heads=None, debug=baseline_debug
+        )
         
         # Get performance with head ablated
         ablated_metrics = self._evaluate_subtask(
-            scoring_examples, subtask_name, ablated_heads=[(layer, head)]
+            scoring_examples, subtask_name, ablated_heads=[(layer, head)], debug=False
         )
         
         # Calculate score as relative performance drop
-        if baseline_metrics.get("accuracy", 0) > 0:
-            score = (baseline_metrics["accuracy"] - ablated_metrics["accuracy"]) / baseline_metrics["accuracy"]
+        baseline_acc = baseline_metrics.get("accuracy", 0)
+        ablated_acc = ablated_metrics.get("accuracy", 0)
+        
+        if baseline_acc > 0:
+            score = (baseline_acc - ablated_acc) / baseline_acc
         else:
-            score = 0.0
+            # If baseline is 0, use absolute difference
+            score = baseline_acc - ablated_acc
         
         # Confidence based on number of examples and consistency
         confidence = min(len(scoring_examples) / 10.0, 1.0)
+        
+        if baseline_debug:
+            print(f"\n    Head scoring (Layer {layer}, Head {head}):")
+            print(f"      Baseline accuracy: {baseline_acc:.4f}")
+            print(f"      Ablated accuracy: {ablated_acc:.4f}")
+            print(f"      Score: {score:.4f}")
         
         return HeadScore(
             layer=layer,
@@ -149,8 +169,8 @@ class AblationScorer(HeadScorer):
             confidence=confidence,
             method="ablation",
             metadata={
-                "baseline_accuracy": baseline_metrics.get("accuracy", 0),
-                "ablated_accuracy": ablated_metrics.get("accuracy", 0),
+                "baseline_accuracy": baseline_acc,
+                "ablated_accuracy": ablated_acc,
                 "n_examples": len(scoring_examples)
             }
         )
@@ -159,11 +179,13 @@ class AblationScorer(HeadScorer):
         self,
         examples: List[Dict[str, Any]],
         subtask_name: str,
-        ablated_heads: Optional[List[Tuple[int, int]]] = None
+        ablated_heads: Optional[List[Tuple[int, int]]] = None,
+        debug: bool = False
     ) -> Dict[str, float]:
         """Evaluate model performance on subtask."""
         correct = 0
         total = 0
+        all_outputs = []  # For debugging
         
         for example in examples:
             try:
@@ -184,17 +206,40 @@ class AblationScorer(HeadScorer):
                             use_cache=True
                         )
                 
+                # Decode output for checking
+                decoded = self.tokenizer.decode(output[0], skip_special_tokens=True)
+                all_outputs.append(decoded)
+                
                 # Evaluate correctness (simplified - should be task-specific)
                 is_correct = self._check_correctness(example, output, subtask_name)
                 if is_correct:
                     correct += 1
                 total += 1
+                
+                # Debug output for first example
+                if debug and total == 1:
+                    print(f"\n    DEBUG - First example:")
+                    print(f"      Input: {input_text[:100]}...")
+                    print(f"      Expected path: {'>'.join([str(p) for p in example.get('path', [])[:10]])}")
+                    print(f"      Model output: {decoded[:200]}")
+                    print(f"      Correct: {is_correct}")
+                    
             except Exception as e:
                 # Skip examples that fail
+                if debug:
+                    print(f"    ERROR processing example: {e}")
                 continue
         
+        accuracy = correct / total if total > 0 else 0.0
+        
+        if debug:
+            print(f"\n    Evaluation summary:")
+            print(f"      Correct: {correct}/{total}")
+            print(f"      Accuracy: {accuracy:.4f}")
+            print(f"      Sample outputs: {all_outputs[:2]}")
+        
         return {
-            "accuracy": correct / total if total > 0 else 0.0,
+            "accuracy": accuracy,
             "correct": correct,
             "total": total
         }
@@ -276,45 +321,58 @@ class AblationScorer(HeadScorer):
         path from the graph edges and goal. The model should output a sequence like
         "node1>node2>node3..." that matches the expected path.
         
-        Since we're using a general LLM (not the trained backward-chaining model),
-        we use a lenient check: if the model generates any reasonable output that
-        contains path elements, we consider it partially correct. The ablation
-        scoring will compare baseline vs ablated performance.
+        IMPORTANT: We use a STRICT check because we need to see differences between
+        baseline and ablated performance. If everything passes, we can't identify
+        important heads.
         """
         # Decode output
         decoded = self.tokenizer.decode(output[0], skip_special_tokens=True)
         
         # Check based on subtask type
         if subtask_name in ["path_finding", "node_traversal", "backward_chain_step"]:
-            # For path-finding tasks, check if any path nodes appear in output
+            # For path-finding tasks, check if the path appears in output
             expected_path = example.get("path", [])
-            if len(expected_path) > 0:
-                # Check if at least some path nodes appear in the output
-                nodes_in_output = sum(1 for node in expected_path if str(node) in decoded)
-                # Consider correct if at least 50% of path nodes appear
-                return nodes_in_output >= len(expected_path) * 0.5
-            return False
+            if len(expected_path) == 0:
+                return False
+            
+            # STRICT: Check if the path sequence appears (at least first 3 nodes in order)
+            if len(expected_path) >= 3:
+                # Look for sequence of first 3 nodes
+                path_start = ">".join([str(p) for p in expected_path[:3]])
+                if path_start in decoded:
+                    return True
+            
+            # Also check if at least 70% of path nodes appear (stricter than before)
+            nodes_in_output = sum(1 for node in expected_path if str(node) in decoded)
+            return nodes_in_output >= len(expected_path) * 0.7
             
         elif subtask_name in ["goal_identification", "edge_parsing"]:
-            # For goal/edge tasks, check if goal or edge info appears
+            # For goal/edge tasks, check if goal appears
             goal = example.get("goal")
             if goal is not None:
-                return str(goal) in decoded
-            # Check if any edges are mentioned
-            edges = example.get("edges", [])
-            if len(edges) > 0:
-                edge_in_output = any(str(e[0]) in decoded or str(e[1]) in decoded for e in edges[:3])
-                return edge_in_output
+                # Check if goal number appears (not just as part of another number)
+                goal_str = str(goal)
+                # Look for goal as standalone or with > separator
+                if f">{goal_str}" in decoded or f"{goal_str}:" in decoded or decoded.strip().endswith(goal_str):
+                    return True
             return False
             
         elif subtask_name in ["graph_construction", "token_prediction"]:
-            # For construction/prediction tasks, any reasonable output is considered
-            # The ablation will measure the difference
-            return len(decoded.strip()) > 0
+            # For construction/prediction, check if output contains graph-related tokens
+            # Look for edge-like patterns (number>number)
+            import re
+            edge_pattern = r'\d+>\d+'
+            if re.search(edge_pattern, decoded):
+                return True
+            return False
         
-        # Default: check if output is non-empty
-        # The actual scoring comes from comparing baseline vs ablated performance
-        return len(decoded.strip()) > 0
+        # Default: check if output is non-empty and contains numbers
+        # (to avoid passing empty or irrelevant outputs)
+        if len(decoded.strip()) == 0:
+            return False
+        # Check if it contains at least one number (indicating some graph-related content)
+        import re
+        return bool(re.search(r'\d+', decoded))
 
 
 class CausalPatchingScorer(HeadScorer):
