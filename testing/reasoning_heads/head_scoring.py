@@ -210,6 +210,14 @@ class AblationScorer(HeadScorer):
             try:
                 # Convert example to input format
                 input_text = self._format_example(example)
+                
+                # Debug: show formatted prompt for first example
+                if debug and total == 0:
+                    print(f"\n    DEBUG - Formatted prompt (first 500 chars):")
+                    print(f"      {input_text[:500]}...")
+                    if len(input_text) > 500:
+                        print(f"      ... (total length: {len(input_text)} chars)")
+                
                 input_ids = self.tokenizer.encode(input_text, return_tensors="pt").to(self.device)
                 
                 # Generate with or without ablation
@@ -219,7 +227,7 @@ class AblationScorer(HeadScorer):
                     else:
                         output = self.model.generate(
                             input_ids,
-                            max_new_tokens=20,  # Reduced for speed
+                            max_new_tokens=50,  # Increased for longer paths
                             do_sample=False,
                             pad_token_id=self.tokenizer.eos_token_id,
                             use_cache=True
@@ -364,6 +372,7 @@ class AblationScorer(HeadScorer):
         Format example for model input.
         
         Converts the backward-chaining example into a text prompt.
+        For instruct models, uses the chat template with proper instructions.
         
         Format: "edge1,edge2,...|goal:"
         Example: "12>4,14>12,1>2|13:"
@@ -375,8 +384,36 @@ class AblationScorer(HeadScorer):
             edges_str = ",".join([f"{e[0]}>{e[1]}" for e in example["edges"]])
             goal = example.get("goal", "?")
             # Format: edges|goal:
-            # This is the input format the model expects
-            return f"{edges_str}|{goal}:"
+            raw_input = f"{edges_str}|{goal}:"
+            
+            # Check if tokenizer has a chat template (for instruct models)
+            if hasattr(self.tokenizer, 'apply_chat_template') and self.tokenizer.chat_template is not None:
+                # Use chat template for instruct models
+                messages = [
+                    {
+                        "role": "system",
+                        "content": (
+                            "You are a helpful assistant that solves backward-chaining reasoning problems. "
+                            "Given a set of directed edges and a goal node, find the path from the root node to the goal node. "
+                            "The path should be a sequence of node numbers separated by '>', starting from the root and ending at the goal. "
+                            "Output only the path sequence, nothing else."
+                        )
+                    },
+                    {
+                        "role": "user",
+                        "content": f"Edges: {edges_str}\nGoal: {goal}\nPath:"
+                    }
+                ]
+                # Apply chat template and return as text (not tokenized)
+                formatted = self.tokenizer.apply_chat_template(
+                    messages,
+                    add_generation_prompt=True,
+                    tokenize=False
+                )
+                return formatted
+            else:
+                # For base models, use raw format
+                return raw_input
         return str(example)
     
     def _check_correctness(
