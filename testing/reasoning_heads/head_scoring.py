@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from scipy import stats
 import json
 import os
+import re
 try:
     from tqdm import tqdm
 except ImportError:
