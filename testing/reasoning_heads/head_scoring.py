@@ -402,32 +402,31 @@ class AblationScorer(HeadScorer):
             
             # Check if tokenizer has a chat template (for instruct models)
             if hasattr(self.tokenizer, 'apply_chat_template') and self.tokenizer.chat_template is not None:
-                # Use chat template for instruct models with few-shot examples
+                # Use chat template for instruct models
                 # Find root node (node that appears as source but never as target)
                 source_nodes = set([e[0] for e in example.get("edges", [])])
                 target_nodes = set([e[1] for e in example.get("edges", [])])
                 root_nodes = source_nodes - target_nodes
                 root_node = list(root_nodes)[0] if root_nodes else "?"
                 
-                # Create a few-shot example from the current example if we have the path
-                example_path = example.get("path", [])
-                example_path_str = ">".join([str(p) for p in example_path]) if example_path else None
+                # Format edges as list: "A1>B1, A2>B2, ..., An>Bn"
+                # This matches the training format from the paper
+                # The model receives: edge list, goal, root, and should predict the path
                 
-                user_content = f"Given a directed graph with edges and a goal node, find the complete path from the root node to the goal node.\n\n"
-                user_content += f"Edges: {edges_str}\n"
-                user_content += f"Root node: {root_node}\n"
-                user_content += f"Goal node: {goal}\n\n"
-                user_content += "Find the path from root to goal using backward-chaining. Output the complete path as a sequence of node numbers separated by '>', starting from the root and ending at the goal.\n\n"
-                user_content += "Path:"
+                user_content = f"Edge list: {edges_str}\n"
+                user_content += f"Goal: {goal}\n"
+                user_content += f"Root: {root_node}\n"
+                user_content += f"Path:"
                 
                 messages = [
                     {
                         "role": "system",
                         "content": (
-                            "You are a helpful assistant that solves backward-chaining reasoning problems. "
-                            "Given a directed graph with edges and a goal node, you need to find the complete path from the root node (the node that has no incoming edges) to the goal node. "
-                            "Use backward-chaining: start from the goal and work backwards to find which nodes lead to it, then construct the forward path from root to goal. "
-                            "Output ONLY the path sequence as numbers separated by '>', nothing else. For example: '10>7>3>5>0>1>2>6>14>12>15>9>11>13'"
+                            "You are solving a backward-chaining path-finding problem in a tree. "
+                            "Given an edge list of a directed tree, a goal node, and the root node, "
+                            "you must find the unique path from the root to the goal. "
+                            "The path is a sequence of node numbers separated by '>', starting from the root and ending at the goal. "
+                            "Output ONLY the path sequence (e.g., '10>7>3>5>0>1>2>6>14>12>15>9>11>13'), nothing else."
                         )
                     },
                     {
