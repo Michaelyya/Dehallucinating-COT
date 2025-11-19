@@ -235,6 +235,8 @@ class ReasoningHeadDiscovery:
                     print(f"      {i+1}. Layer {score.layer}, Head {score.head}: score={score.score:.4f}, confidence={score.confidence:.4f}")
             
             # Filter and select top heads
+            # For CognitiveMirrors, we want heads with LARGEST positive scores
+            # (heads that decrease performance the most when masked)
             filtered_scores = [
                 score for score in head_scores
                 if score.score >= min_score and score.confidence >= min_confidence
@@ -243,7 +245,11 @@ class ReasoningHeadDiscovery:
             print(f"\n  After filtering (min_score={min_score}, min_confidence={min_confidence}):")
             print(f"    {len(filtered_scores)} heads passed threshold")
             
-            # Take top K
+            # Sort by score descending (largest positive scores first)
+            # Positive score = baseline > ablated (masking hurts performance)
+            filtered_scores.sort(key=lambda x: x.score, reverse=True)
+            
+            # Take top K (heads with largest performance drop when masked)
             top_scores = filtered_scores[:top_k]
             
             # Convert to ReasoningHead objects
@@ -388,6 +394,43 @@ class ReasoningHeadDiscovery:
             json.dump(data, f, indent=2)
         
         print(f"Saved {len(heads)} discovered heads to {output_file}")
+    
+    def save_heads_for_decore(
+        self, 
+        heads: List[ReasoningHead], 
+        output_dir: str = "../retrieval_heads/",
+        model_name: str = "Meta-Llama-3-8B-Instruct"
+    ):
+        """
+        Save discovered heads in DeCoReEntropy format.
+        
+        Format: {"layer-head": [score], ...}
+        Example: {"0-5": [0.123], "1-3": [0.456], ...}
+        """
+        os.makedirs(output_dir, exist_ok=True)
+        
+        # Convert to DeCoRe format: {"layer-head": [score], ...}
+        decore_format = {}
+        for head in heads:
+            key = f"{head.layer}-{head.head}"
+            # Store score as a list (DeCoRe expects list of scores)
+            decore_format[key] = [head.score]
+        
+        # Sort by score (descending) - DeCoRe will take top K
+        sorted_heads = sorted(decore_format.items(), key=lambda x: x[1][0], reverse=True)
+        decore_format = dict(sorted_heads)
+        
+        # Save to file
+        output_file = os.path.join(output_dir, f"{model_name}.json")
+        with open(output_file, 'w') as f:
+            # Write as single line (DeCoRe reads with readline())
+            f.write(json.dumps(decore_format))
+        
+        print(f"Saved {len(decore_format)} heads for DeCoReEntropy to {output_file}")
+        print(f"  Format: layer-head -> [score]")
+        print(f"  Top 5 heads: {list(sorted_heads[:5])}")
+        
+        return output_file
     
     def load_discovered_heads(
         self,

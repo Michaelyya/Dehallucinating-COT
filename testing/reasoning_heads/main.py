@@ -260,6 +260,15 @@ Examples:
         discovery.save_discovered_heads(discovered_heads, args.output_heads)
         print(f"\nDiscovered {len(discovered_heads)} reasoning heads")
         print(f"Saved to {args.output_heads}")
+        
+        # Also save in DeCoReEntropy format
+        model_base_name = args.model_name.split("/")[-1] if "/" in args.model_name else args.model_name
+        decore_file = discovery.save_heads_for_decore(
+            discovered_heads,
+            output_dir="../retrieval_heads/",
+            model_name=model_base_name
+        )
+        print(f"Also saved in DeCoReEntropy format to {decore_file}")
     
     # Evaluate on benchmarks
     if args.evaluate:

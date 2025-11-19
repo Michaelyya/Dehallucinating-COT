@@ -18,12 +18,67 @@ except ImportError:
 # BLEU score for evaluation
 BLEU_AVAILABLE = False
 USE_NLTK_BLEU = False
+USE_EVALUATE_LIB = False
 bleu_metric = None
+
+def simple_bleu(reference_tokens, candidate_tokens, n=4):
+    """
+    Simple BLEU score implementation as fallback.
+    Computes n-gram precision with brevity penalty.
+    """
+    if len(candidate_tokens) == 0:
+        return 0.0
+    if len(reference_tokens) == 0:
+        return 0.0
+    
+    # Brevity penalty
+    if len(candidate_tokens) < len(reference_tokens):
+        if len(candidate_tokens) == 0:
+            bp = 0.0
+        else:
+            bp = np.exp(1 - len(reference_tokens) / len(candidate_tokens))
+    else:
+        bp = 1.0
+    
+    # N-gram precisions
+    precisions = []
+    for i in range(1, n + 1):
+        # Get n-grams
+        ref_ngrams = {}
+        for j in range(len(reference_tokens) - i + 1):
+            ngram = tuple(reference_tokens[j:j+i])
+            ref_ngrams[ngram] = ref_ngrams.get(ngram, 0) + 1
+        
+        cand_ngrams = {}
+        for j in range(len(candidate_tokens) - i + 1):
+            ngram = tuple(candidate_tokens[j:j+i])
+            cand_ngrams[ngram] = cand_ngrams.get(ngram, 0) + 1
+        
+        # Count matches
+        matches = 0
+        total = 0
+        for ngram, count in cand_ngrams.items():
+            total += count
+            if ngram in ref_ngrams:
+                matches += min(count, ref_ngrams[ngram])
+        
+        if total == 0:
+            precisions.append(0.0)
+        else:
+            precisions.append(matches / total)
+    
+    # Geometric mean of precisions
+    if any(p == 0 for p in precisions):
+        return 0.0
+    
+    geometric_mean = np.exp(np.mean([np.log(p) for p in precisions]))
+    return bp * geometric_mean
 
 try:
     from nltk.translate.bleu_score import sentence_bleu, SmoothingFunction
     BLEU_AVAILABLE = True
     USE_NLTK_BLEU = True
+    USE_EVALUATE_LIB = False
 except ImportError:
     try:
         # Try using evaluate library
@@ -31,9 +86,13 @@ except ImportError:
         bleu_metric = evaluate.load("bleu")
         BLEU_AVAILABLE = True
         USE_NLTK_BLEU = False
+        USE_EVALUATE_LIB = True
     except ImportError:
-        BLEU_AVAILABLE = False
-        print("Warning: BLEU score not available. Install nltk or evaluate library.")
+        # Use simple fallback implementation
+        BLEU_AVAILABLE = True
+        USE_NLTK_BLEU = False
+        USE_EVALUATE_LIB = False
+        print("Note: Using simple BLEU implementation. For better accuracy, install nltk: pip install nltk")
 
 
 @dataclass
@@ -145,34 +204,18 @@ class AblationScorer(HeadScorer):
             scoring_examples, subtask_name, ablated_heads=[(layer, head)], debug=debug
         )
         
-        # Calculate score as relative performance drop
-        baseline_acc = baseline_metrics.get("accuracy", 0)
+        # Calculate score as absolute performance drop
+        baseline_acc = baseline_metrics.get("accuracy", 0)  # This is BLEU score for CognitiveMirrors
         ablated_acc = ablated_metrics.get("accuracy", 0)
         
-        # Score calculation:
+        # Score calculation: baseline - ablated
         # Positive score = head is important (masking hurts performance)
-        # Negative score = head might be harmful (masking improves performance) OR check is wrong
-        if baseline_acc > 0:
-            score = (baseline_acc - ablated_acc) / baseline_acc
-        else:
-            # If baseline is 0, use absolute difference
-            # But if ablated is better, that's suspicious - might indicate check is wrong
-            score = baseline_acc - ablated_acc
+        # Negative score = head might be harmful (masking improves performance)
+        # We want heads with LARGEST positive scores (most important)
+        score = baseline_acc - ablated_acc
         
-        # Handle negative scores
-        # Negative score means masking improved performance, which could indicate:
-        # 1. The head is actually harmful (unlikely but possible)
-        # 2. The correctness check is inconsistent between baseline and ablated
-        # 3. Random variation in a small sample
-        # 
-        # For now, we'll set negative scores to 0 (not important) since they're likely
-        # due to correctness check issues rather than actual head importance
-        if score < 0:
-            if debug:
-                print(f"      WARNING: Negative score ({score:.4f}) - masking improved performance!")
-                print(f"      This likely indicates correctness check inconsistency")
-                print(f"      Setting score to 0 (head not important)")
-            score = 0.0  # Set to 0 rather than absolute value
+        # Keep negative scores as-is (they indicate heads that might be harmful)
+        # But for selection, we'll focus on positive scores (heads that hurt when masked)
         
         # Confidence based on number of examples and consistency
         confidence = min(len(scoring_examples) / 10.0, 1.0)
@@ -352,8 +395,7 @@ class AblationScorer(HeadScorer):
         debug: bool = False
     ) -> Dict[str, float]:
         """Evaluate using BLEU score for free-form text generation."""
-        if not BLEU_AVAILABLE:
-            raise ImportError("BLEU score not available. Install nltk or evaluate library.")
+        # BLEU_AVAILABLE should always be True now (we have fallback)
         
         bleu_scores = []
         all_outputs = []
@@ -408,17 +450,22 @@ class AblationScorer(HeadScorer):
                 
                 all_outputs.append(generated_text)
                 
-                # Get reference answer
-                reference = example.get("answer", "") or example.get("subquestion_answer", "")
-                if not reference:
+                # Get reference answer and extract simplified version
+                reference_full = example.get("answer", "") or example.get("subquestion_answer", "")
+                if not reference_full:
                     continue
                 
+                # Extract simplified reference: "yes", "no", or "unanswerable"
+                reference = self._extract_simplified_answer(reference_full)
                 all_references.append(reference)
                 
-                # Calculate BLEU score
+                # Calculate BLEU score using simplified reference
                 # Tokenize for BLEU (split into words)
                 reference_tokens = reference.lower().split()
                 generated_tokens_list = generated_text.lower().split()
+                
+                # Also extract simplified answer from generated text for comparison
+                generated_simplified = self._extract_simplified_answer(generated_text)
                 
                 if USE_NLTK_BLEU:
                     # Use NLTK BLEU
@@ -428,13 +475,16 @@ class AblationScorer(HeadScorer):
                         generated_tokens_list,
                         smoothing_function=smoothing
                     )
-                else:
+                elif USE_EVALUATE_LIB:
                     # Use evaluate library
                     result = bleu_metric.compute(
                         predictions=[generated_tokens_list],
                         references=[[reference_tokens]]
                     )
                     bleu = result.get("bleu", 0.0)
+                else:
+                    # Use simple fallback implementation
+                    bleu = simple_bleu(reference_tokens, generated_tokens_list)
                 
                 bleu_scores.append(bleu)
                 
@@ -575,6 +625,65 @@ class AblationScorer(HeadScorer):
                 # For base models, use raw format
                 return raw_input
         return str(example)
+    
+    def _extract_simplified_answer(self, answer_text: str) -> str:
+        """
+        Extract simplified answer from full answer text.
+        Returns: "yes", "no", or "unanswerable"
+        """
+        answer_lower = answer_text.lower().strip()
+        
+        # Check for "no" patterns
+        no_patterns = [
+            r'\bno\b',
+            r'\bnot\b.*factual',
+            r'\bnot\b.*true',
+            r'\bnot\b.*correct',
+            r'is\s+not',
+            r'are\s+not',
+            r'does\s+not',
+            r'do\s+not',
+        ]
+        for pattern in no_patterns:
+            if re.search(pattern, answer_lower):
+                return "no"
+        
+        # Check for "yes" patterns
+        yes_patterns = [
+            r'\byes\b',
+            r'\bis\b.*factual',
+            r'\bis\b.*true',
+            r'\bis\b.*correct',
+            r'is\s+factual',
+            r'is\s+true',
+            r'is\s+correct',
+        ]
+        for pattern in yes_patterns:
+            if re.search(pattern, answer_lower):
+                return "yes"
+        
+        # Check for unanswerable patterns
+        unanswerable_patterns = [
+            r'\bunanswerable\b',
+            r'\bcannot\s+determine\b',
+            r'\bcannot\s+tell\b',
+            r'\bnot\s+possible\s+to\s+tell\b',
+            r'\bnot\s+enough\s+information\b',
+            r'\binsufficient\s+information\b',
+        ]
+        for pattern in unanswerable_patterns:
+            if re.search(pattern, answer_lower):
+                return "unanswerable"
+        
+        # Default: try to infer from first few words
+        first_words = answer_lower.split()[:5]
+        if any(word in ['no', 'not'] for word in first_words):
+            return "no"
+        elif any(word in ['yes'] for word in first_words):
+            return "yes"
+        
+        # If we can't determine, return original (will use full text for BLEU)
+        return answer_text
     
     def _format_cognitive_mirrors_example(self, example: Dict[str, Any]) -> str:
         """Format CognitiveMirrors example for model input."""
