@@ -11,20 +11,6 @@ def create_masked_config(
     masked_heads: List[Tuple[int, int]],
     output_config_path: Optional[str] = None
 ) -> Dict[str, Any]:
-    """
-    Create a config file with reasoning heads masked.
-    
-    This modifies the decoder config to use a baseline method that masks
-    the specified heads during generation.
-    
-    Args:
-        base_config_path: Path to base config file
-        masked_heads: List of (layer, head) tuples to mask
-        output_config_path: Optional path to save modified config
-    
-    Returns:
-        Modified config dictionary
-    """
     # Load base config
     with open(base_config_path, 'r') as f:
         config = yaml.safe_load(f)

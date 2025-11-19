@@ -5,18 +5,28 @@ from typing import List, Dict, Any, Optional, Tuple
 from dataclasses import dataclass, asdict
 import numpy as np
 
-from .subtask_extraction import (
-    discover_subtasks, 
-    Subtask, 
-    get_subtask_examples,
-    parse_backward_chaining_example
-)
+# Try to import CognitiveMirrors version first, fallback to backward-chaining
+try:
+    from .subtask_extraction_cognitive_mirrors import (
+        discover_subtasks, 
+        Subtask, 
+        get_subtask_examples,
+        parse_cognitive_mirrors_example as parse_example
+    )
+    USE_COGNITIVE_MIRRORS = True
+except ImportError:
+    from .subtask_extraction import (
+        discover_subtasks, 
+        Subtask, 
+        get_subtask_examples,
+        parse_backward_chaining_example as parse_example
+    )
+    USE_COGNITIVE_MIRRORS = False
 from .head_scoring import HeadScorer, HeadScore, create_scorer
 
 
 @dataclass
 class ReasoningHead:
-    """Identified reasoning head with metadata."""
     layer: int
     head: int
     subtask: str
@@ -43,7 +53,7 @@ class ReasoningHeadDiscovery:
         self,
         model,
         tokenizer,
-        backward_chaining_dir: str = "../backward-chaining-circuits",
+        backward_chaining_dir: str = "../CognitiveMirrors",
         device: str = "cuda",
         scoring_method: str = "ablation",
         scoring_config: Optional[Dict[str, Any]] = None,
@@ -88,7 +98,12 @@ class ReasoningHeadDiscovery:
                     backward_chaining_dir = abs_path
         
         self.backward_chaining_dir = backward_chaining_dir
-        print(f"Using backward-chaining directory: {self.backward_chaining_dir}")
+        self.use_cognitive_mirrors = USE_COGNITIVE_MIRRORS
+        
+        if self.use_cognitive_mirrors:
+            print(f"Using CognitiveMirrors directory: {self.backward_chaining_dir}")
+        else:
+            print(f"Using backward-chaining directory: {self.backward_chaining_dir}")
         
         # Discover subtasks
         self.subtasks = discover_subtasks(backward_chaining_dir)
@@ -104,7 +119,24 @@ class ReasoningHeadDiscovery:
         single_subtask: Optional[str] = None  # Run only one subtask
     ) -> List[ReasoningHead]:
         if dataset_file is None:
-            dataset_file = os.path.join(self.backward_chaining_dir, "dataset.txt")
+            if self.use_cognitive_mirrors:
+                # Use preprocessed CognitiveMirrors dataset - try multiple locations
+                possible_paths = [
+                    "cognitive_mirrors_logical_reasoning.json",  # Current directory
+                    os.path.join(os.path.dirname(__file__), "cognitive_mirrors_logical_reasoning.json"),  # Same dir as script
+                    os.path.join(self.backward_chaining_dir, "dataset", "balanced_cot_train_data.json"),  # Original dataset
+                ]
+                dataset_file = None
+                for path in possible_paths:
+                    if os.path.exists(path):
+                        dataset_file = path
+                        break
+                if dataset_file is None:
+                    print("ERROR: Could not find cognitive_mirrors_logical_reasoning.json")
+                    print("Please run: python preprocess_cognitive_mirrors.py")
+                    return []
+            else:
+                dataset_file = os.path.join(self.backward_chaining_dir, "dataset.txt")
         
         # Resolve absolute path
         if not os.path.isabs(dataset_file):
@@ -130,13 +162,23 @@ class ReasoningHeadDiscovery:
         print(f"\nLoading examples from dataset...")
         all_examples = []
         try:
-            with open(dataset_file, 'r') as f:
-                for i, line in enumerate(f):
-                    if i >= n_examples_per_subtask * 2:  # Load a few extra
-                        break
-                    parsed = parse_backward_chaining_example(line.strip())
-                    if parsed:
-                        all_examples.append(parsed)
+            if self.use_cognitive_mirrors:
+                # Load JSON file for CognitiveMirrors
+                with open(dataset_file, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                    for item in data[:n_examples_per_subtask * 2]:  # Load a few extra
+                        parsed = parse_example(item)
+                        if parsed:
+                            all_examples.append(parsed)
+            else:
+                # Load line-by-line for backward-chaining
+                with open(dataset_file, 'r') as f:
+                    for i, line in enumerate(f):
+                        if i >= n_examples_per_subtask * 2:  # Load a few extra
+                            break
+                        parsed = parse_example(line.strip())
+                        if parsed:
+                            all_examples.append(parsed)
             print(f"Successfully loaded {len(all_examples)} examples from dataset")
         except Exception as e:
             print(f"ERROR: Could not load dataset: {e}")
@@ -231,17 +273,6 @@ class ReasoningHeadDiscovery:
         subtask: Subtask,
         output_dir: str = "./traces"
     ) -> Dict[str, Any]:
-        """
-        Collect per-layer, per-head attention maps and activations.
-        
-        Args:
-            examples: List of examples to trace
-            subtask: Subtask being analyzed
-            output_dir: Directory to save traces
-        
-        Returns:
-            Dictionary with trace data and metadata
-        """
         os.makedirs(output_dir, exist_ok=True)
         
         traces = {
@@ -274,7 +305,6 @@ class ReasoningHeadDiscovery:
         example: Dict[str, Any],
         subtask: Subtask
     ) -> Optional[Dict[str, Any]]:
-        """Trace a single example through the model."""
         try:
             # Format input
             input_text = self._format_example(example)
@@ -309,7 +339,6 @@ class ReasoningHeadDiscovery:
             return None
     
     def _format_example(self, example: Dict[str, Any]) -> str:
-        """Format example for model input."""
         if "edges" in example:
             edges_str = ",".join([f"{e[0]}>{e[1]}" for e in example["edges"]])
             goal = example.get("goal", "?")
@@ -317,7 +346,6 @@ class ReasoningHeadDiscovery:
         return str(example)
     
     def _format_example_for_display(self, example: Dict[str, Any]) -> str:
-        """Format example for display purposes."""
         if "edges" in example:
             edges_str = ",".join([f"{e[0]}>{e[1]}" for e in example["edges"][:5]])  # Show first 5
             if len(example["edges"]) > 5:
@@ -331,7 +359,6 @@ class ReasoningHeadDiscovery:
         return str(example)
     
     def _serialize_traces(self, traces: Dict[str, Any]) -> Dict[str, Any]:
-        """Serialize traces for JSON (convert numpy arrays)."""
         serialized = {}
         for key, value in traces.items():
             if isinstance(value, list) and len(value) > 0:
@@ -350,7 +377,6 @@ class ReasoningHeadDiscovery:
         heads: List[ReasoningHead],
         output_file: str = "discovered_heads.json"
     ):
-        """Save discovered heads to JSON file."""
         data = {
             "model": getattr(self.model.config, 'model_type', 'unknown'),
             "scoring_method": self.scoring_method,
@@ -367,7 +393,6 @@ class ReasoningHeadDiscovery:
         self,
         input_file: str
     ) -> List[ReasoningHead]:
-        """Load discovered heads from JSON file."""
         with open(input_file, 'r') as f:
             data = json.load(f)
         
@@ -382,7 +407,6 @@ class ReasoningHeadDiscovery:
         heads: List[ReasoningHead],
         subtask_name: str
     ) -> List[ReasoningHead]:
-        """Get all heads for a specific subtask."""
         return [h for h in heads if h.subtask == subtask_name]
     
     def get_head_list_for_masking(
@@ -391,11 +415,6 @@ class ReasoningHeadDiscovery:
         subtask_name: Optional[str] = None,
         top_k: Optional[int] = None
     ) -> List[Tuple[int, int]]:
-        """
-        Get list of (layer, head) tuples for masking.
-        
-        Format compatible with DeCoRe block_list parameter.
-        """
         if subtask_name:
             heads = self.get_heads_for_subtask(heads, subtask_name)
         

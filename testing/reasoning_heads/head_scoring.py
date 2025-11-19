@@ -1,11 +1,3 @@
-"""
-Head scoring methods for identifying reasoning heads.
-
-Implements multiple scoring approaches:
-1. Ablation effect: Measure change when head is zeroed/randomized
-2. Causal attention patching: Replace head activations with baselines
-3. Mutual information: Correlation between head outputs and subtask signals
-"""
 
 import torch
 import torch.nn as nn
@@ -23,10 +15,29 @@ except ImportError:
     def tqdm(iterable, desc=None, leave=True):
         return iterable
 
+# BLEU score for evaluation
+BLEU_AVAILABLE = False
+USE_NLTK_BLEU = False
+bleu_metric = None
+
+try:
+    from nltk.translate.bleu_score import sentence_bleu, SmoothingFunction
+    BLEU_AVAILABLE = True
+    USE_NLTK_BLEU = True
+except ImportError:
+    try:
+        # Try using evaluate library
+        import evaluate
+        bleu_metric = evaluate.load("bleu")
+        BLEU_AVAILABLE = True
+        USE_NLTK_BLEU = False
+    except ImportError:
+        BLEU_AVAILABLE = False
+        print("Warning: BLEU score not available. Install nltk or evaluate library.")
+
 
 @dataclass
 class HeadScore:
-    """Score for a specific attention head."""
     layer: int
     head: int
     score: float
@@ -39,7 +50,6 @@ class HeadScore:
 
 
 class HeadScorer(ABC):
-    """Base class for head scoring methods."""
     
     def __init__(self, model, tokenizer, device: str = "cuda"):
         self.model = model
@@ -55,7 +65,6 @@ class HeadScorer(ABC):
         examples: List[Dict[str, Any]],
         subtask_name: str
     ) -> HeadScore:
-        """Score a specific head for a subtask."""
         pass
     
     def score_all_heads(
@@ -67,7 +76,6 @@ class HeadScorer(ABC):
         max_layers: Optional[int] = None,
         max_heads_per_layer: Optional[int] = None
     ) -> List[HeadScore]:
-        """Score all heads and return ranked list."""
         if n_layers is None:
             n_layers = getattr(self.model.config, 'num_hidden_layers', 
                              getattr(self.model.config, 'n_layers', 32))
@@ -109,11 +117,6 @@ class HeadScorer(ABC):
 
 
 class AblationScorer(HeadScorer):
-    """
-    Score heads by measuring the effect of ablating (zeroing) them.
-    
-    Higher score = more important head (larger performance drop when ablated).
-    """
     
     def __init__(self, model, tokenizer, device: str = "cuda", ablation_type: str = "zero"):
         super().__init__(model, tokenizer, device)
@@ -127,7 +130,6 @@ class AblationScorer(HeadScorer):
         subtask_name: str,
         debug: bool = False
     ) -> HeadScore:
-        """Score head by ablation effect."""
         # Use a smaller subset for faster scoring
         # For initial discovery, use just 2-3 examples per head
         scoring_examples = examples[:min(3, len(examples))]
@@ -201,7 +203,13 @@ class AblationScorer(HeadScorer):
         ablated_heads: Optional[List[Tuple[int, int]]] = None,
         debug: bool = False
     ) -> Dict[str, float]:
-        """Evaluate model performance on subtask."""
+        # For CognitiveMirrors, use BLEU score instead of correctness
+        use_bleu = subtask_name in ["logical_reasoning"]
+        
+        if use_bleu:
+            return self._evaluate_subtask_bleu(examples, subtask_name, ablated_heads, debug)
+        
+        # Original correctness-based evaluation for backward-chaining
         correct = 0
         total = 0
         all_outputs = []  # For debugging
@@ -336,17 +344,141 @@ class AblationScorer(HeadScorer):
             "total": total
         }
     
+    def _evaluate_subtask_bleu(
+        self,
+        examples: List[Dict[str, Any]],
+        subtask_name: str,
+        ablated_heads: Optional[List[Tuple[int, int]]] = None,
+        debug: bool = False
+    ) -> Dict[str, float]:
+        """Evaluate using BLEU score for free-form text generation."""
+        if not BLEU_AVAILABLE:
+            raise ImportError("BLEU score not available. Install nltk or evaluate library.")
+        
+        bleu_scores = []
+        all_outputs = []
+        all_references = []
+        
+        for example in examples:
+            try:
+                # Convert example to input format
+                input_text = self._format_example(example)
+                
+                # Debug: show formatted prompt for first example
+                if debug and len(bleu_scores) == 0:
+                    print(f"\n    DEBUG - Formatted prompt (first 500 chars):")
+                    print(f"      {input_text[:500]}...")
+                    if len(input_text) > 500:
+                        print(f"      ... (total length: {len(input_text)} chars)")
+                
+                input_ids = self.tokenizer.encode(input_text, return_tensors="pt").to(self.device)
+                
+                # Generate with or without ablation
+                with torch.no_grad():
+                    if ablated_heads:
+                        output = self._generate_with_ablation(input_ids, ablated_heads)
+                    else:
+                        output = self.model.generate(
+                            input_ids,
+                            max_new_tokens=150,  # Longer for free-form answers
+                            do_sample=False,
+                            temperature=1.0,
+                            pad_token_id=self.tokenizer.eos_token_id,
+                            eos_token_id=self.tokenizer.eos_token_id,
+                            use_cache=True
+                        )
+                
+                # Decode and extract generated text
+                decoded_full = self.tokenizer.decode(output[0], skip_special_tokens=True)
+                input_length = len(input_ids[0])
+                generated_tokens = output[0][input_length:]
+                generated_text = self.tokenizer.decode(generated_tokens, skip_special_tokens=True)
+                
+                # Clean up generated text
+                import re
+                generated_text = re.sub(r'^assistant\s*\n*\s*', '', generated_text, flags=re.IGNORECASE)
+                generated_text = generated_text.strip()
+                
+                if input_text in decoded_full:
+                    generated_text_alt = decoded_full.replace(input_text, "", 1).strip()
+                    generated_text_alt = re.sub(r'^assistant\s*\n*\s*', '', generated_text_alt, flags=re.IGNORECASE)
+                    generated_text_alt = generated_text_alt.strip()
+                    if len(generated_text_alt) > len(generated_text):
+                        generated_text = generated_text_alt
+                
+                all_outputs.append(generated_text)
+                
+                # Get reference answer
+                reference = example.get("answer", "") or example.get("subquestion_answer", "")
+                if not reference:
+                    continue
+                
+                all_references.append(reference)
+                
+                # Calculate BLEU score
+                # Tokenize for BLEU (split into words)
+                reference_tokens = reference.lower().split()
+                generated_tokens_list = generated_text.lower().split()
+                
+                if USE_NLTK_BLEU:
+                    # Use NLTK BLEU
+                    smoothing = SmoothingFunction().method1
+                    bleu = sentence_bleu(
+                        [reference_tokens],
+                        generated_tokens_list,
+                        smoothing_function=smoothing
+                    )
+                else:
+                    # Use evaluate library
+                    result = bleu_metric.compute(
+                        predictions=[generated_tokens_list],
+                        references=[[reference_tokens]]
+                    )
+                    bleu = result.get("bleu", 0.0)
+                
+                bleu_scores.append(bleu)
+                
+                # Debug output for first example
+                if debug and len(bleu_scores) == 1:
+                    print(f"\n    DEBUG - First example evaluation:")
+                    print(f"      Input: {input_text[:200]}...")
+                    print(f"      Reference: {reference}")
+                    print(f"      Generated: {generated_text}")
+                    print(f"      BLEU score: {bleu:.4f}")
+                    if ablated_heads:
+                        print(f"      Ablated heads: {ablated_heads}")
+                    else:
+                        print(f"      Mode: BASELINE (no heads ablated)")
+                
+            except Exception as e:
+                if debug:
+                    print(f"    ERROR processing example: {e}")
+                continue
+        
+        avg_bleu = np.mean(bleu_scores) if bleu_scores else 0.0
+        
+        if debug:
+            print(f"\n    Evaluation summary:")
+            print(f"      Average BLEU: {avg_bleu:.4f}")
+            print(f"      BLEU scores: {bleu_scores[:5]}")
+            print(f"      Sample outputs: {all_outputs[:2]}")
+        
+        return {
+            "accuracy": avg_bleu,  # Use BLEU as "accuracy" metric
+            "bleu_score": avg_bleu,
+            "correct": len(bleu_scores),
+            "total": len(examples)
+        }
+    
     def _generate_with_ablation(
         self,
         input_ids: torch.Tensor,
         ablated_heads: List[Tuple[int, int]]
     ) -> torch.Tensor:
-        """Generate with specific heads ablated."""
         # This is a simplified version - actual implementation depends on model architecture
         # For now, we'll use a hook-based approach
         
         def ablation_hook(module, input, output, layer_idx, head_idx):
-            """Hook to zero out specific head."""
             if self.ablation_type == "zero":
                 # Zero out the head's contribution
                 output[:, head_idx, :, :] = 0
@@ -385,15 +517,13 @@ class AblationScorer(HeadScorer):
         """
         Format example for model input.
         
-        Converts the backward-chaining example into a text prompt.
-        For instruct models, uses the chat template with proper instructions.
-        
-        Format: "edge1,edge2,...|goal:"
-        Example: "12>4,14>12,1>2|13:"
-        
-        The model should then generate the path: "10>7>3>5>..."
+        Supports both backward-chaining and CognitiveMirrors formats.
         """
-        # Convert backward-chaining example to text
+        # Check if this is a CognitiveMirrors example
+        if "subquestion" in example or ("question" in example and "subquestion_answer" in example):
+            return self._format_cognitive_mirrors_example(example)
+        
+        # Backward-chaining format
         if "edges" in example:
             edges_str = ",".join([f"{e[0]}>{e[1]}" for e in example["edges"]])
             goal = example.get("goal", "?")
@@ -446,6 +576,55 @@ class AblationScorer(HeadScorer):
                 return raw_input
         return str(example)
     
+    def _format_cognitive_mirrors_example(self, example: Dict[str, Any]) -> str:
+        """Format CognitiveMirrors example for model input."""
+        question = example.get("question", "")
+        subquestion = example.get("subquestion", "")
+        
+        # Check if tokenizer has a chat template (for instruct models)
+        if hasattr(self.tokenizer, 'apply_chat_template') and self.tokenizer.chat_template is not None:
+            # Build context from previous subquestions if available
+            context = ""
+            if "full_example" in example and "generated" in example["full_example"]:
+                # Get previous subquestions for context
+                generated = example["full_example"]["generated"]
+                for item in generated:
+                    if item.get("cognitive_skill") == "Retrieval" and item.get("subquestion") != subquestion:
+                        context += f"Q: {item.get('subquestion', '')}\nA: {item.get('answer', '')}\n"
+            
+            if not context:
+                context = "No prior knowledge.\n"
+            
+            user_content = f"Main Question: {question}\n\n"
+            user_content += f"Context:\n{context}\n"
+            user_content += f"Subquestion: {subquestion}\n"
+            user_content += f"Answer:"
+            
+            messages = [
+                {
+                    "role": "system",
+                    "content": (
+                        "You are a helpful assistant that answers logical reasoning questions. "
+                        "Given a main question, context from previous subquestions, and a logical reasoning subquestion, "
+                        "provide a clear and accurate answer."
+                    )
+                },
+                {
+                    "role": "user",
+                    "content": user_content
+                }
+            ]
+            
+            formatted = self.tokenizer.apply_chat_template(
+                messages,
+                add_generation_prompt=True,
+                tokenize=False
+            )
+            return formatted
+        else:
+            # Simple format for base models
+            return f"Question: {question}\nSubquestion: {subquestion}\nAnswer:"
+    
     def _check_correctness(
         self,
         example: Dict[str, Any],
@@ -453,18 +632,6 @@ class AblationScorer(HeadScorer):
         subtask_name: str,
         is_decoded: bool = False
     ) -> bool:
-        """
-        Check if output is correct for the subtask.
-        
-        LOGIC EXPLANATION:
-        For backward-chaining tasks, we check if the model can generate the correct
-        path from the graph edges and goal. The model should output a sequence like
-        "node1>node2>node3..." that matches the expected path.
-        
-        IMPORTANT: We use a STRICT check because we need to see differences between
-        baseline and ablated performance. If everything passes, we can't identify
-        important heads.
-        """
         # Decode output if it's a tensor
         if not is_decoded:
             decoded = self.tokenizer.decode(output[0], skip_special_tokens=True)
@@ -565,7 +732,6 @@ class CausalPatchingScorer(HeadScorer):
         examples: List[Dict[str, Any]],
         subtask_name: str
     ) -> HeadScore:
-        """Score head using causal patching."""
         # Get clean (correct) examples
         clean_examples = [ex for ex in examples if self._is_clean(ex)]
         corrupted_examples = [ex for ex in examples if not self._is_clean(ex)]
@@ -605,7 +771,6 @@ class CausalPatchingScorer(HeadScorer):
         )
     
     def _is_clean(self, example: Dict[str, Any]) -> bool:
-        """Check if example is 'clean' (correct)."""
         # Simplified - should check actual correctness
         return True
     
@@ -615,7 +780,6 @@ class CausalPatchingScorer(HeadScorer):
         corrupted_examples: List[Dict[str, Any]],
         subtask_name: str
     ) -> float:
-        """Get logit difference between clean and corrupted."""
         # Simplified implementation
         return 1.0
     
@@ -627,7 +791,6 @@ class CausalPatchingScorer(HeadScorer):
         head: int,
         subtask_name: str
     ) -> float:
-        """Get logit difference with head patched."""
         # Simplified implementation
         return 0.5
 
@@ -647,7 +810,6 @@ class MutualInfoScorer(HeadScorer):
         examples: List[Dict[str, Any]],
         subtask_name: str
     ) -> HeadScore:
-        """Score head using mutual information."""
         # Collect activations and labels
         activations = []
         labels = []
@@ -699,13 +861,11 @@ class MutualInfoScorer(HeadScorer):
         head: int,
         example: Dict[str, Any]
     ) -> Optional[np.ndarray]:
-        """Extract head activation for example."""
         # This would need to hook into model forward pass
         # Simplified version
         return np.random.randn(10)  # Placeholder
     
     def _get_subtask_label(self, example: Dict[str, Any], subtask_name: str) -> Any:
-        """Get label for subtask."""
         if subtask_name == "path_finding":
             return len(example.get("path", []))
         elif subtask_name == "goal_identification":
@@ -713,14 +873,12 @@ class MutualInfoScorer(HeadScorer):
         return 0
     
     def _discretize(self, values: np.ndarray, n_bins: int = 10) -> np.ndarray:
-        """Discretize continuous values."""
         if values.dtype == float:
             _, bins = np.histogram(values, bins=n_bins)
             return np.digitize(values, bins) - 1
         return values
     
     def _mutual_information(self, x: np.ndarray, y: np.ndarray) -> float:
-        """Calculate mutual information between x and y."""
         # Use scipy's mutual information
         try:
             from sklearn.metrics import mutual_info_score
@@ -739,7 +897,6 @@ def create_scorer(
     device: str = "cuda",
     **kwargs
 ) -> HeadScorer:
-    """Factory function to create appropriate scorer."""
     if method == "ablation":
         return AblationScorer(model, tokenizer, device, **kwargs)
     elif method == "causal_patching":

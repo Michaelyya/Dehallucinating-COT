@@ -10,7 +10,6 @@ import yaml
 import torch
 from transformers import AutoTokenizer, AutoModelForCausalLM
 
-# Set Hugging Face cache directory
 DEFAULT_CACHE_DIR = "/cluster/scratch/yongyu/cache"
 
 # Add parent directory to path
@@ -25,7 +24,16 @@ from reasoning_heads import (
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Discover and evaluate reasoning heads for backward-chaining reasoning"
+        description="Discover and evaluate reasoning heads for CognitiveMirrors Logical Reasoning",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  # Simple discovery (auto-detects cognitive_mirrors_logical_reasoning.json):
+  python main.py --discover --model_name "meta-llama/Meta-Llama-3-8B-Instruct" --scoring_method ablation --n_examples 20 --top_k 10
+  
+  # With custom parameters:
+  python main.py --discover --model_name "meta-llama/Meta-Llama-3-8B-Instruct" --scoring_method ablation --n_examples 50 --top_k 20
+        """
     )
     
     # Discovery arguments
@@ -43,33 +51,33 @@ def main():
     parser.add_argument(
         "--backward_chaining_dir",
         type=str,
-        default="../backward-chaining-circuits",
-        help="Path to backward-chaining-circuits directory"
+        default="../CognitiveMirrors",
+        help="Path to CognitiveMirrors directory (or backward-chaining-circuits for legacy). Auto-detected if cognitive_mirrors_logical_reasoning.json exists."
     )
     parser.add_argument(
         "--scoring_method",
         type=str,
         default="ablation",
         choices=["ablation", "causal_patching", "mutual_info"],
-        help="Head scoring method"
+        help="Head scoring method (default: ablation)"
     )
     parser.add_argument(
         "--n_examples",
         type=int,
         default=20,
-        help="Number of examples per subtask"
+        help="Number of examples per subtask (default: 20)"
     )
     parser.add_argument(
         "--top_k",
         type=int,
         default=10,
-        help="Top K heads to select per subtask"
+        help="Top K heads to select per subtask (default: 10)"
     )
     parser.add_argument(
         "--single_subtask",
         type=str,
         default=None,
-        help="Process only a single subtask (for debugging)"
+        help="Process only a single subtask. Auto-set to 'logical_reasoning' if CognitiveMirrors dataset detected."
     )
     parser.add_argument(
         "--min_score",
@@ -232,10 +240,19 @@ def main():
         print("DISCOVERING REASONING HEADS")
         print("="*60)
         
+        # Auto-detect CognitiveMirrors and set single_subtask if not specified
+        single_subtask = args.single_subtask
+        if single_subtask is None:
+            # Check if preprocessed CognitiveMirrors file exists
+            preprocessed_file = "cognitive_mirrors_logical_reasoning.json"
+            if os.path.exists(preprocessed_file) or os.path.exists(os.path.join(os.path.dirname(__file__), preprocessed_file)):
+                single_subtask = "logical_reasoning"
+                print(f"Auto-detected CognitiveMirrors dataset. Using subtask: {single_subtask}")
+        
         discovered_heads = discovery.discover_heads(
             n_examples_per_subtask=args.n_examples,
             top_k=args.top_k,
-            single_subtask=args.single_subtask,
+            single_subtask=single_subtask,
             min_score=args.min_score,
             min_confidence=args.min_confidence
         )
