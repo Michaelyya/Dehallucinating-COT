@@ -111,19 +111,6 @@ class ReasoningHeadDiscovery:
         min_score: float = 0.1,
         min_confidence: float = 0.3
     ) -> List[ReasoningHead]:
-        """
-        Discover reasoning heads for all subtasks.
-        
-        Args:
-            dataset_file: Path to dataset file
-            n_examples_per_subtask: Number of examples to use per subtask
-            top_k: Return top K heads per subtask
-            min_score: Minimum score threshold
-            min_confidence: Minimum confidence threshold
-        
-        Returns:
-            List of identified reasoning heads
-        """
         if dataset_file is None:
             dataset_file = os.path.join(self.backward_chaining_dir, "dataset.txt")
         

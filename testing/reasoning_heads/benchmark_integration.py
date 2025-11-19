@@ -1,6 +1,3 @@
-"""
-Integration helpers for running benchmarks with reasoning head masking.
-"""
 
 import os
 import yaml

@@ -16,6 +16,12 @@ from dataclasses import dataclass
 from scipy import stats
 import json
 import os
+try:
+    from tqdm import tqdm
+except ImportError:
+    # Fallback if tqdm not available
+    def tqdm(iterable, desc=None, leave=True):
+        return iterable
 
 
 @dataclass
@@ -57,7 +63,9 @@ class HeadScorer(ABC):
         examples: List[Dict[str, Any]],
         subtask_name: str,
         n_layers: Optional[int] = None,
-        n_heads: Optional[int] = None
+        n_heads: Optional[int] = None,
+        max_layers: Optional[int] = None,
+        max_heads_per_layer: Optional[int] = None
     ) -> List[HeadScore]:
         """Score all heads and return ranked list."""
         if n_layers is None:
@@ -67,18 +75,30 @@ class HeadScorer(ABC):
             n_heads = getattr(self.model.config, 'num_attention_heads',
                             getattr(self.model.config, 'n_heads', 32))
         
+        # Limit scope for faster initial discovery
+        if max_layers is None:
+            max_layers = min(n_layers, 8)  # Limit to first 8 layers initially
+        if max_heads_per_layer is None:
+            max_heads_per_layer = min(n_heads, 8)  # Limit to first 8 heads per layer
+        
+        total_heads = max_layers * max_heads_per_layer
+        print(f"  Scoring {total_heads} heads ({max_layers} layers × {max_heads_per_layer} heads per layer)")
+        
         scores = []
-        for layer in range(n_layers):
-            for head in range(n_heads):
+        from tqdm import tqdm
+        
+        for layer in tqdm(range(max_layers), desc="  Layers", leave=False):
+            for head in range(max_heads_per_layer):
                 try:
                     score = self.score_head(layer, head, examples, subtask_name)
                     scores.append(score)
                 except Exception as e:
-                    print(f"Warning: Could not score layer {layer}, head {head}: {e}")
+                    print(f"\n  Warning: Could not score layer {layer}, head {head}: {e}")
                     continue
         
         # Sort by score descending
         scores.sort(key=lambda x: x.score, reverse=True)
+        print(f"  Completed scoring {len(scores)} heads")
         return scores
 
 
@@ -101,12 +121,16 @@ class AblationScorer(HeadScorer):
         subtask_name: str
     ) -> HeadScore:
         """Score head by ablation effect."""
+        # Use a smaller subset for faster scoring
+        # For initial discovery, use just 2-3 examples per head
+        scoring_examples = examples[:min(3, len(examples))]
+        
         # Get baseline performance
-        baseline_metrics = self._evaluate_subtask(examples, subtask_name, ablated_heads=None)
+        baseline_metrics = self._evaluate_subtask(scoring_examples, subtask_name, ablated_heads=None)
         
         # Get performance with head ablated
         ablated_metrics = self._evaluate_subtask(
-            examples, subtask_name, ablated_heads=[(layer, head)]
+            scoring_examples, subtask_name, ablated_heads=[(layer, head)]
         )
         
         # Calculate score as relative performance drop
@@ -116,7 +140,7 @@ class AblationScorer(HeadScorer):
             score = 0.0
         
         # Confidence based on number of examples and consistency
-        confidence = min(len(examples) / 10.0, 1.0)
+        confidence = min(len(scoring_examples) / 10.0, 1.0)
         
         return HeadScore(
             layer=layer,
@@ -127,7 +151,7 @@ class AblationScorer(HeadScorer):
             metadata={
                 "baseline_accuracy": baseline_metrics.get("accuracy", 0),
                 "ablated_accuracy": ablated_metrics.get("accuracy", 0),
-                "n_examples": len(examples)
+                "n_examples": len(scoring_examples)
             }
         )
     
@@ -142,27 +166,32 @@ class AblationScorer(HeadScorer):
         total = 0
         
         for example in examples:
-            # Convert example to input format
-            input_text = self._format_example(example)
-            input_ids = self.tokenizer.encode(input_text, return_tensors="pt").to(self.device)
-            
-            # Generate with or without ablation
-            with torch.no_grad():
-                if ablated_heads:
-                    output = self._generate_with_ablation(input_ids, ablated_heads)
-                else:
-                    output = self.model.generate(
-                        input_ids,
-                        max_new_tokens=50,
-                        do_sample=False,
-                        pad_token_id=self.tokenizer.eos_token_id
-                    )
-            
-            # Evaluate correctness (simplified - should be task-specific)
-            is_correct = self._check_correctness(example, output, subtask_name)
-            if is_correct:
-                correct += 1
-            total += 1
+            try:
+                # Convert example to input format
+                input_text = self._format_example(example)
+                input_ids = self.tokenizer.encode(input_text, return_tensors="pt").to(self.device)
+                
+                # Generate with or without ablation
+                with torch.no_grad():
+                    if ablated_heads:
+                        output = self._generate_with_ablation(input_ids, ablated_heads)
+                    else:
+                        output = self.model.generate(
+                            input_ids,
+                            max_new_tokens=20,  # Reduced for speed
+                            do_sample=False,
+                            pad_token_id=self.tokenizer.eos_token_id,
+                            use_cache=True
+                        )
+                
+                # Evaluate correctness (simplified - should be task-specific)
+                is_correct = self._check_correctness(example, output, subtask_name)
+                if is_correct:
+                    correct += 1
+                total += 1
+            except Exception as e:
+                # Skip examples that fail
+                continue
         
         return {
             "accuracy": correct / total if total > 0 else 0.0,
