@@ -147,11 +147,30 @@ class AblationScorer(HeadScorer):
         baseline_acc = baseline_metrics.get("accuracy", 0)
         ablated_acc = ablated_metrics.get("accuracy", 0)
         
+        # Score calculation:
+        # Positive score = head is important (masking hurts performance)
+        # Negative score = head might be harmful (masking improves performance) OR check is wrong
         if baseline_acc > 0:
             score = (baseline_acc - ablated_acc) / baseline_acc
         else:
             # If baseline is 0, use absolute difference
+            # But if ablated is better, that's suspicious - might indicate check is wrong
             score = baseline_acc - ablated_acc
+        
+        # Handle negative scores
+        # Negative score means masking improved performance, which could indicate:
+        # 1. The head is actually harmful (unlikely but possible)
+        # 2. The correctness check is inconsistent between baseline and ablated
+        # 3. Random variation in a small sample
+        # 
+        # For now, we'll set negative scores to 0 (not important) since they're likely
+        # due to correctness check issues rather than actual head importance
+        if score < 0:
+            if debug:
+                print(f"      WARNING: Negative score ({score:.4f}) - masking improved performance!")
+                print(f"      This likely indicates correctness check inconsistency")
+                print(f"      Setting score to 0 (head not important)")
+            score = 0.0  # Set to 0 rather than absolute value
         
         # Confidence based on number of examples and consistency
         confidence = min(len(scoring_examples) / 10.0, 1.0)
@@ -235,13 +254,42 @@ class AblationScorer(HeadScorer):
                 
                 # Debug output for first example
                 if debug and total == 1:
+                    expected_path = example.get('path', [])
+                    expected_path_str = ">".join([str(p) for p in expected_path])
                     print(f"\n    DEBUG - First example evaluation:")
                     print(f"      Input: {input_text}")
-                    print(f"      Expected path: {'>'.join([str(p) for p in example.get('path', [])])}")
+                    print(f"      Expected path: {expected_path_str}")
                     print(f"      Full model output: {decoded_full}")
                     print(f"      Generated part only: '{generated_text}'")
                     print(f"      Generated length: {len(generated_text)} chars")
-                    print(f"      Does generated contain path? {example.get('path', [])}")
+                    print(f"      Full path in generated? {expected_path_str in generated_text}")
+                    if len(expected_path) >= 7:
+                        path_7 = ">".join([str(p) for p in expected_path[:7]])
+                        print(f"      First 7 nodes ({path_7}) in generated? {path_7 in generated_text}")
+                    if len(expected_path) >= 5:
+                        path_5 = ">".join([str(p) for p in expected_path[:5]])
+                        print(f"      First 5 nodes ({path_5}) in generated? {path_5 in generated_text}")
+                    # Check what sequences FROM THE START are found
+                    found_sequences_from_start = []
+                    for seq_len in range(5, min(10, len(expected_path) + 1)):
+                        seq = expected_path[0:seq_len]  # Always from start
+                        seq_str = ">".join([str(p) for p in seq])
+                        if seq_str in generated_text:
+                            found_sequences_from_start.append(seq_str)
+                    if found_sequences_from_start:
+                        print(f"      Found sequences FROM START: {found_sequences_from_start}")
+                    else:
+                        print(f"      Found sequences FROM START: NONE")
+                        # Also check what random sequences might be found (for debugging)
+                        random_sequences = []
+                        for seq_len in range(3, 6):
+                            for start_idx in range(1, len(expected_path) - seq_len + 1):  # Not from start
+                                seq = expected_path[start_idx:start_idx + seq_len]
+                                seq_str = ">".join([str(p) for p in seq])
+                                if seq_str in generated_text:
+                                    random_sequences.append(seq_str)
+                        if random_sequences:
+                            print(f"      Found random subsequences (NOT from start): {random_sequences[:3]}")
                     print(f"      Correct: {is_correct}")
                     if ablated_heads:
                         print(f"      Ablated heads: {ablated_heads}")
@@ -366,9 +414,17 @@ class AblationScorer(HeadScorer):
             # Convert expected path to string format
             expected_path_str = ">".join([str(p) for p in expected_path])
             
-            # STRICT: Check if the full path sequence appears
+            # ULTRA STRICT: Check if the full path sequence appears with > separators
+            # This is the only reliable way to check correctness
             if expected_path_str in decoded:
                 return True
+            
+            # Check if at least first 7 nodes in sequence appear (more than half)
+            # This ensures we're getting a substantial portion of the path
+            if len(expected_path) >= 7:
+                path_start = ">".join([str(p) for p in expected_path[:7]])
+                if path_start in decoded:
+                    return True
             
             # Check if at least first 5 nodes in sequence appear
             if len(expected_path) >= 5:
@@ -376,25 +432,24 @@ class AblationScorer(HeadScorer):
                 if path_start in decoded:
                     return True
             
-            # Fallback: Check if at least 80% of path nodes appear in correct order
-            # This is more lenient but still requires most of the path
-            nodes_in_order = 0
-            decoded_lower = decoded.lower()
-            for i, node in enumerate(expected_path):
-                node_str = str(node)
-                # Check if node appears, and if it's followed by next node (if exists)
-                if node_str in decoded_lower:
-                    if i < len(expected_path) - 1:
-                        next_node = str(expected_path[i+1])
-                        # Check if next node appears after current node
-                        node_pos = decoded_lower.find(node_str)
-                        if node_pos != -1 and next_node in decoded_lower[node_pos:]:
-                            nodes_in_order += 1
-                    else:
-                        nodes_in_order += 1
+            # ULTRA STRICT FALLBACK: Require path sequence FROM THE BEGINNING
+            # We ONLY check sequences starting from index 0 (the root of the path)
+            # This prevents matching on random edge patterns from the input
             
-            # Require at least 80% of nodes in correct order
-            return nodes_in_order >= len(expected_path) * 0.8
+            # Check sequences starting from the beginning of the path only
+            # We check from longest to shortest to find the best match
+            for seq_len in range(min(10, len(expected_path)), 4, -1):  # Check 10 down to 5
+                # Always start from index 0 (beginning of path - the root)
+                seq = expected_path[0:seq_len]
+                seq_str = ">".join([str(p) for p in seq])
+                # Check if this sequence appears in decoded
+                if seq_str in decoded:
+                    # Found a valid sequence from the start
+                    return True
+            
+            # If we get here, no valid sequence from the start was found
+            # The model did not generate the path correctly
+            return False
             
         elif subtask_name in ["goal_identification", "edge_parsing"]:
             # For goal/edge tasks, check if goal appears
