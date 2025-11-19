@@ -206,12 +206,29 @@ class AblationScorer(HeadScorer):
                             use_cache=True
                         )
                 
-                # Decode output for checking
-                decoded = self.tokenizer.decode(output[0], skip_special_tokens=True)
-                all_outputs.append(decoded)
+                # Decode full output for debugging
+                decoded_full = self.tokenizer.decode(output[0], skip_special_tokens=True)
                 
-                # Evaluate correctness (simplified - should be task-specific)
-                is_correct = self._check_correctness(example, output, subtask_name)
+                # Extract only the generated part (after the input)
+                # The model generates: input + new_tokens
+                # We need to extract only the new tokens
+                input_length = len(input_ids[0])
+                generated_tokens = output[0][input_length:]  # Only the newly generated tokens
+                generated_text = self.tokenizer.decode(generated_tokens, skip_special_tokens=True)
+                
+                # Also try to extract by removing the input text from decoded output
+                # Sometimes tokenizer decoding includes the input, so we strip it
+                if input_text in decoded_full:
+                    # Remove the input part
+                    generated_text_alt = decoded_full.replace(input_text, "", 1).strip()
+                    # Use the longer one (more complete generation)
+                    if len(generated_text_alt) > len(generated_text):
+                        generated_text = generated_text_alt
+                
+                all_outputs.append(generated_text)  # Store only generated part
+                
+                # Evaluate correctness using only the generated part
+                is_correct = self._check_correctness(example, generated_text, subtask_name, is_decoded=True)
                 if is_correct:
                     correct += 1
                 total += 1
@@ -221,8 +238,10 @@ class AblationScorer(HeadScorer):
                     print(f"\n    DEBUG - First example evaluation:")
                     print(f"      Input: {input_text}")
                     print(f"      Expected path: {'>'.join([str(p) for p in example.get('path', [])])}")
-                    print(f"      Model output (full): {decoded}")
-                    print(f"      Model output length: {len(decoded)} chars")
+                    print(f"      Full model output: {decoded_full}")
+                    print(f"      Generated part only: '{generated_text}'")
+                    print(f"      Generated length: {len(generated_text)} chars")
+                    print(f"      Does generated contain path? {example.get('path', [])}")
                     print(f"      Correct: {is_correct}")
                     if ablated_heads:
                         print(f"      Ablated heads: {ablated_heads}")
@@ -315,8 +334,9 @@ class AblationScorer(HeadScorer):
     def _check_correctness(
         self,
         example: Dict[str, Any],
-        output: torch.Tensor,
-        subtask_name: str
+        output: Any,  # Can be Tensor or decoded string
+        subtask_name: str,
+        is_decoded: bool = False
     ) -> bool:
         """
         Check if output is correct for the subtask.
@@ -330,8 +350,11 @@ class AblationScorer(HeadScorer):
         baseline and ablated performance. If everything passes, we can't identify
         important heads.
         """
-        # Decode output
-        decoded = self.tokenizer.decode(output[0], skip_special_tokens=True)
+        # Decode output if it's a tensor
+        if not is_decoded:
+            decoded = self.tokenizer.decode(output[0], skip_special_tokens=True)
+        else:
+            decoded = output  # Already decoded string
         
         # Check based on subtask type
         if subtask_name in ["path_finding", "node_traversal", "backward_chain_step"]:
@@ -340,16 +363,38 @@ class AblationScorer(HeadScorer):
             if len(expected_path) == 0:
                 return False
             
-            # STRICT: Check if the path sequence appears (at least first 3 nodes in order)
-            if len(expected_path) >= 3:
-                # Look for sequence of first 3 nodes
-                path_start = ">".join([str(p) for p in expected_path[:3]])
+            # Convert expected path to string format
+            expected_path_str = ">".join([str(p) for p in expected_path])
+            
+            # STRICT: Check if the full path sequence appears
+            if expected_path_str in decoded:
+                return True
+            
+            # Check if at least first 5 nodes in sequence appear
+            if len(expected_path) >= 5:
+                path_start = ">".join([str(p) for p in expected_path[:5]])
                 if path_start in decoded:
                     return True
             
-            # Also check if at least 70% of path nodes appear (stricter than before)
-            nodes_in_output = sum(1 for node in expected_path if str(node) in decoded)
-            return nodes_in_output >= len(expected_path) * 0.7
+            # Fallback: Check if at least 80% of path nodes appear in correct order
+            # This is more lenient but still requires most of the path
+            nodes_in_order = 0
+            decoded_lower = decoded.lower()
+            for i, node in enumerate(expected_path):
+                node_str = str(node)
+                # Check if node appears, and if it's followed by next node (if exists)
+                if node_str in decoded_lower:
+                    if i < len(expected_path) - 1:
+                        next_node = str(expected_path[i+1])
+                        # Check if next node appears after current node
+                        node_pos = decoded_lower.find(node_str)
+                        if node_pos != -1 and next_node in decoded_lower[node_pos:]:
+                            nodes_in_order += 1
+                    else:
+                        nodes_in_order += 1
+            
+            # Require at least 80% of nodes in correct order
+            return nodes_in_order >= len(expected_path) * 0.8
             
         elif subtask_name in ["goal_identification", "edge_parsing"]:
             # For goal/edge tasks, check if goal appears
