@@ -209,13 +209,13 @@ class AblationScorer(HeadScorer):
         ablated_acc = ablated_metrics.get("accuracy", 0)
         
         # Score calculation: baseline - ablated
-        # Positive score = head is important (masking hurts performance)
-        # Negative score = head might be harmful (masking improves performance)
-        # We want heads with LARGEST positive scores (most important)
+        # Positive score = head is important (masking hurts performance, baseline > ablated)
+        # Negative score = head might be harmful (masking improves performance, ablated > baseline)
+        # We want heads with LARGEST positive scores (most important for reasoning)
         score = baseline_acc - ablated_acc
         
-        # Keep negative scores as-is (they indicate heads that might be harmful)
-        # But for selection, we'll focus on positive scores (heads that hurt when masked)
+        # Note: We keep negative scores as-is, but for reasoning head selection,
+        # we focus on positive scores (heads that decrease performance when masked)
         
         # Confidence based on number of examples and consistency
         confidence = min(len(scoring_examples) / 10.0, 1.0)
@@ -456,35 +456,57 @@ class AblationScorer(HeadScorer):
                     continue
                 
                 # Extract simplified reference: "yes", "no", or "unanswerable"
-                reference = self._extract_simplified_answer(reference_full)
-                all_references.append(reference)
+                reference_simplified = self._extract_simplified_answer(reference_full)
+                all_references.append(reference_simplified)
                 
-                # Calculate BLEU score using simplified reference
-                # Tokenize for BLEU (split into words)
-                reference_tokens = reference.lower().split()
-                generated_tokens_list = generated_text.lower().split()
-                
-                # Also extract simplified answer from generated text for comparison
+                # Also extract simplified answer from generated text
                 generated_simplified = self._extract_simplified_answer(generated_text)
                 
-                if USE_NLTK_BLEU:
-                    # Use NLTK BLEU
-                    smoothing = SmoothingFunction().method1
-                    bleu = sentence_bleu(
-                        [reference_tokens],
-                        generated_tokens_list,
-                        smoothing_function=smoothing
-                    )
-                elif USE_EVALUATE_LIB:
-                    # Use evaluate library
-                    result = bleu_metric.compute(
-                        predictions=[generated_tokens_list],
-                        references=[[reference_tokens]]
-                    )
-                    bleu = result.get("bleu", 0.0)
+                # Check exact match first (Yes/No extraction) - give 100% for exact match
+                if reference_simplified in ["yes", "no", "unanswerable"]:
+                    if generated_simplified.lower() == reference_simplified.lower():
+                        # Exact match! Give 100% score
+                        bleu = 1.0
+                    else:
+                        # No exact match, use BLEU score with full reference
+                        reference_tokens = reference_full.lower().split()
+                        generated_tokens_list = generated_text.lower().split()
+                        
+                        if USE_NLTK_BLEU:
+                            smoothing = SmoothingFunction().method1
+                            bleu = sentence_bleu(
+                                [reference_tokens],
+                                generated_tokens_list,
+                                smoothing_function=smoothing
+                            )
+                        elif USE_EVALUATE_LIB:
+                            result = bleu_metric.compute(
+                                predictions=[generated_tokens_list],
+                                references=[[reference_tokens]]
+                            )
+                            bleu = result.get("bleu", 0.0)
+                        else:
+                            bleu = simple_bleu(reference_tokens, generated_tokens_list)
                 else:
-                    # Use simple fallback implementation
-                    bleu = simple_bleu(reference_tokens, generated_tokens_list)
+                    # Reference not simplified, use full reference for BLEU
+                    reference_tokens = reference_full.lower().split()
+                    generated_tokens_list = generated_text.lower().split()
+                    
+                    if USE_NLTK_BLEU:
+                        smoothing = SmoothingFunction().method1
+                        bleu = sentence_bleu(
+                            [reference_tokens],
+                            generated_tokens_list,
+                            smoothing_function=smoothing
+                        )
+                    elif USE_EVALUATE_LIB:
+                        result = bleu_metric.compute(
+                            predictions=[generated_tokens_list],
+                            references=[[reference_tokens]]
+                        )
+                        bleu = result.get("bleu", 0.0)
+                    else:
+                        bleu = simple_bleu(reference_tokens, generated_tokens_list)
                 
                 bleu_scores.append(bleu)
                 
@@ -492,8 +514,11 @@ class AblationScorer(HeadScorer):
                 if debug and len(bleu_scores) == 1:
                     print(f"\n    DEBUG - First example evaluation:")
                     print(f"      Input: {input_text[:200]}...")
-                    print(f"      Reference: {reference}")
-                    print(f"      Generated: {generated_text}")
+                    print(f"      Reference (full): {reference_full}")
+                    print(f"      Reference (simplified): {reference_simplified}")
+                    print(f"      Generated (full): {generated_text[:200]}...")
+                    print(f"      Generated (simplified): {generated_simplified}")
+                    print(f"      Exact match (Yes/No): {generated_simplified.lower() == reference_simplified.lower() if reference_simplified in ['yes', 'no', 'unanswerable'] else 'N/A'}")
                     print(f"      BLEU score: {bleu:.4f}")
                     if ablated_heads:
                         print(f"      Ablated heads: {ablated_heads}")
