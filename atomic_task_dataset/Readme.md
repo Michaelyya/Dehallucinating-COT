@@ -1,5 +1,5 @@
 # How to use the dataset
-Use the following prompt to feed into LLMs. Insert question in corresponding fields.
+Use the following prompt to feed into LLMs. Insert question in corresponding fields (< question >).
 ```
 You are an expert in multi-step logical and transitive reasoning. 
 You will be given one multiple-choice question that already includes its answer options after the word "Options:". 
@@ -27,6 +27,8 @@ Output format:
 - Answer only using this format:
 - [ "answer": "<your chosen option, copied verbatim from the options>" ]
 - Do not output anything before '[' or after ']'.
+
+Your answer:
 ```
 
 
@@ -577,16 +579,5 @@ Example (do not copy verbatim):
 </TASK_SCOPE>
 ```
 
-
-### Transitive reasoning-scalar order
-```
-
-```
-
-
-### Transitive reasoning-scalar order
-```
-
-```
 
 
