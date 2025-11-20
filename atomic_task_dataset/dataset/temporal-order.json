@@ -1,0 +1,107 @@
+[
+    {
+        "question": "The meeting happens before the workshop. The workshop happens before the exam. All events are on the same day. Which event happens first? Options: [the meeting, the workshop, the exam].",
+        "answer": "the meeting",
+        "task_type": "Transitive reasoning-temporal order"
+    },
+    {
+        "question": "On the same day, the design meeting is at 8:45 AM, the stand-up is at 9:15 AM, the code review is at 1:30 PM, and the demo is at 4:00 PM. Which event happens first? Options: [the design meeting, the stand-up, the code review, the demo].",
+        "answer": "the design meeting",
+        "task_type": "Transitive reasoning-temporal order"
+    },
+    {
+        "question": "The training session is on Monday at 3:00 PM. The interview is on Tuesday at 10:00 AM. The orientation is 2 hours before the interview on the same Tuesday. The project briefing is on Wednesday morning. All times are in the same week. Which event happens first? Options: [the training session, the interview, the orientation, the project briefing].",
+        "answer": "the training session",
+        "task_type": "Transitive reasoning-temporal order"
+    },
+    {
+        "question": "At a conference, the registration happens before the check-in. The keynote starts after the check-in. The closing ceremony is after the keynote. All events are on the same day. Which event happens last? Options: [the registration, the check-in, the keynote, the closing ceremony].",
+        "answer": "the closing ceremony",
+        "task_type": "Transitive reasoning-temporal order"
+    },
+    {
+        "question": "On the same day, breakfast is at 7:30 AM. The kickoff meeting is 90 minutes after breakfast. The status update happens after the kickoff meeting but before lunch. Lunch is at 12:30 PM. The wrap-up meeting is after lunch. Which event happens last? Options: [breakfast, the kickoff meeting, the status update, lunch, the wrap-up meeting].",
+        "answer": "the wrap-up meeting",
+        "task_type": "Transitive reasoning-temporal order"
+    },
+    {
+        "question": "All events happen on the same day. The team briefing is before the product demo. The coffee break is after the team briefing but before the product demo. The retrospective is after the product demo. Which event happens last? Options: [the team briefing, the coffee break, the product demo, the retrospective].",
+        "answer": "the retrospective",
+        "task_type": "Transitive reasoning-temporal order"
+    },
+    {
+        "question": "In the same week, the lecture is on Monday, the lab session is on Thursday, the quiz is on Tuesday, and the project demo is on Friday. Which event happens first? Options: [the lecture, the lab session, the quiz, the project demo].",
+        "answer": "the lecture",
+        "task_type": "Transitive reasoning-temporal order"
+    },
+    {
+        "question": "All events occur on the same day. The stand-up happens before the design review. The client call is after the design review. The deployment check happens after the client call but before the celebration dinner. Which event happens last? Options: [the stand-up, the design review, the client call, the deployment check, the celebration dinner].",
+        "answer": "the celebration dinner",
+        "task_type": "Transitive reasoning-temporal order"
+    },
+    {
+        "question": "On a single day, the opening talk is at 9:00 AM. The registration desk opens 30 minutes before the opening talk. The coffee break is 45 minutes after the opening talk. The panel discussion starts after the coffee break. Which event happens first? Options: [the opening talk, the registration desk opening, the coffee break, the panel discussion].",
+        "answer": "the registration desk opening",
+        "task_type": "Transitive reasoning-temporal order"
+    },
+    {
+        "question": "The planning meeting is scheduled before lunch. The code review is after lunch. The daily sync happens after the planning meeting but before lunch. All events are on the same day. Which event happens last? Options: [the planning meeting, lunch, the code review, the daily sync].",
+        "answer": "the code review",
+        "task_type": "Transitive reasoning-temporal order"
+    },
+    {
+        "question": "In the same week, the onboarding session is on Wednesday afternoon. The welcome breakfast is on Monday morning. The policy briefing is on Tuesday afternoon. The team-building game is on Friday evening. The feedback meeting is on Thursday morning. Which event happens last? Options: [the onboarding session, the welcome breakfast, the policy briefing, the team-building game, the feedback meeting].",
+        "answer": "the team-building game",
+        "task_type": "Transitive reasoning-temporal order"
+    },
+    {
+        "question": "All events occur on June 10th. The security check is at 7:00 AM. Boarding starts 30 minutes after the security check. The gate announcement is 15 minutes before boarding. Takeoff is after boarding. Which event happens first? Options: [the security check, boarding, the gate announcement, takeoff].",
+        "answer": "the security check",
+        "task_type": "Transitive reasoning-temporal order"
+    },
+    {
+        "question": "On the same day, the doctor’s appointment is at 10:30 AM. The pharmacy visit is after the doctor’s appointment. The lab test is 1 hour before the doctor’s appointment. The breakfast is before the lab test. Which event happens first? Options: [the doctor’s appointment, the pharmacy visit, the lab test, breakfast].",
+        "answer": "breakfast",
+        "task_type": "Transitive reasoning-temporal order"
+    },
+    {
+        "question": "Across a single week, the project kickoff is on Tuesday, the interim review is on Thursday, the final presentation is on Friday, and the requirements meeting is on Monday. Which event happens first? Options: [the project kickoff, the interim review, the final presentation, the requirements meeting].",
+        "answer": "the requirements meeting",
+        "task_type": "Transitive reasoning-temporal order"
+    },
+    {
+        "question": "All events take place on the same day. The rehearsal is before the concert. The sound check is before the rehearsal. The afterparty is after the concert. The ticket check happens after the sound check but before the rehearsal. Which event happens last? Options: [the rehearsal, the concert, the sound check, the afterparty, the ticket check].",
+        "answer": "the afterparty",
+        "task_type": "Transitive reasoning-temporal order"
+    },
+    {
+        "question": "All events occur in order on a single timeline. The brainstorm session is before the prototype review. The stakeholder meeting is after the prototype review. The requirements workshop is before the brainstorm session. The sign-off call is after the stakeholder meeting. Which event happens first? Options: [the brainstorm session, the prototype review, the stakeholder meeting, the requirements workshop, the sign-off call].",
+        "answer": "the requirements workshop",
+        "task_type": "Transitive reasoning-temporal order"
+    },
+    {
+        "question": "On the same day, the opening ceremony is at 8:00 AM. The first match starts 90 minutes after the opening ceremony. The award ceremony is after the last match. The lunch break is between the first match and the award ceremony. Which event happens first? Options: [the opening ceremony, the first match, the award ceremony, the lunch break].",
+        "answer": "the opening ceremony",
+        "task_type": "Transitive reasoning-temporal order"
+    },
+    {
+        "question": "All events occur during a two-day workshop. The registration is on Day 1 at 9:00 AM. The morning lecture is on Day 1 at 10:00 AM. The evening panel is on Day 1 at 6:00 PM. The hackathon starts on Day 2 at 9:00 AM. The closing remarks are on Day 2 at 5:00 PM. Which event happens last? Options: [the registration, the morning lecture, the evening panel, the hackathon, the closing remarks].",
+        "answer": "the closing remarks",
+        "task_type": "Transitive reasoning-temporal order"
+    },
+    {
+        "question": "On a single day, the breakfast meeting is at 7:45 AM. The budget review is 2 hours after the breakfast meeting. The sales call is after the budget review but before the team lunch. The team lunch is at 1:00 PM. Which event happens last? Options: [the breakfast meeting, the budget review, the sales call, the team lunch].",
+        "answer": "the team lunch",
+        "task_type": "Transitive reasoning-temporal order"
+    },
+    {
+        "question": "Throughout the same week, the kickoff call is on Wednesday morning. The requirements call is two days before the kickoff call. The status update is one day after the kickoff call. The final handoff is three days after the status update. Which event happens last? Options: [the kickoff call, the requirements call, the status update, the final handoff].",
+        "answer": "the final handoff",
+        "task_type": "Transitive reasoning-temporal order"
+    },
+    {
+        "question": "All events are on the same day. The warm-up starts before the practice match. The strategy meeting is after the warm-up but before the practice match. The final match is after the practice match. The cooldown session is after the final match. Which event happens last? Options: [the warm-up, the practice match, the strategy meeting, the final match, the cooldown session].",
+        "answer": "the cooldown session",
+        "task_type": "Transitive reasoning-temporal order"
+    }
+]

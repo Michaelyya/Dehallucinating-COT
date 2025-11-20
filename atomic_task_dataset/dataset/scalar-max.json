@@ -1,0 +1,102 @@
+[
+    {
+        "question": "Maria is taller than Nina, and Nina is taller than Olga. Who is the tallest? Options: [Maria, Nina, Olga].",
+        "answer": "Maria",
+        "task_type": "Transitive reasoning-scalar max"
+    },
+    {
+        "question": "Ethan is older than Jacob. Mia is younger than Jacob but older than Lily. Ethan is also older than Mia. Who is the youngest? Options: [Ethan, Jacob, Mia, Lily].",
+        "answer": "Lily",
+        "task_type": "Transitive reasoning-scalar max"
+    },
+    {
+        "question": "Box A is heavier than Box B. Box B is heavier than Box C. Box D is heavier than Box A. Which box is the heaviest? Options: [Box A, Box B, Box C, Box D].",
+        "answer": "Box D",
+        "task_type": "Transitive reasoning-scalar max"
+    },
+    {
+        "question": "Runner Leo is faster than Max. Noah is slower than Max. Olivia is faster than Leo. Priya is slower than Noah. Who is the fastest runner? Options: [Leo, Max, Noah, Olivia, Priya].",
+        "answer": "Olivia",
+        "task_type": "Transitive reasoning-scalar max"
+    },
+    {
+        "question": "Ben scored lower than Carla on the exam. Diana scored higher than Ben but lower than Carla. Who got the highest score? Options: [Ben, Carla, Diana].",
+        "answer": "Carla",
+        "task_type": "Transitive reasoning-scalar max"
+    },
+    {
+        "question": "Brighton is farther from the base camp than Coral. Dayton is closer to the base camp than Coral. Elmwood is farther from the base camp than Brighton. Fairview is closer to the base camp than Dayton. Aspen is farther from the base camp than Elmwood. Which city is farthest from the base camp? Options: [Aspen, Brighton, Coral, Dayton, Elmwood, Fairview].",
+        "answer": "Aspen",
+        "task_type": "Transitive reasoning-scalar max"
+    },
+    {
+        "question": "Blake is richer than Aria. Chen is richer than Blake. Diego has less money than Aria. Who is the poorest? Options: [Aria, Blake, Chen, Diego].",
+        "answer": "Diego",
+        "task_type": "Transitive reasoning-scalar max"
+    },
+    {
+        "question": "Among five computers Nova, Orion, Pulse, Quark, and Rhea processing the same task, Orion is faster than Nova. Pulse is slower than Nova. Quark is faster than Orion. Rhea is slower than Pulse. Which computer is the slowest? Options: [Nova, Orion, Pulse, Quark, Rhea].",
+        "answer": "Rhea",
+        "task_type": "Transitive reasoning-scalar max"
+    },
+    {
+        "question": "Phone Alpha is more expensive than Phone Beta. Phone Gamma is cheaper than Phone Beta. Which phone is the cheapest? Options: [Phone Alpha, Phone Beta, Phone Gamma].",
+        "answer": "Phone Gamma",
+        "task_type": "Transitive reasoning-scalar max"
+    },
+    {
+        "question": "Ian has more marbles than Julia. Kevin has fewer marbles than Julia. Lara has more marbles than Ian. Who has the most marbles? Options: [Ian, Julia, Kevin, Lara].",
+        "answer": "Lara",
+        "task_type": "Transitive reasoning-scalar max"
+    },
+    {
+        "question": "Project Red took longer to finish than Project Blue. Project Green was completed before Project Blue. Project Yellow took longer than Project Red. Project Purple was completed before Project Green. Which project took the fewest days to finish? Options: [Project Red, Project Blue, Project Green, Project Yellow, Project Purple].",
+        "answer": "Project Purple",
+        "task_type": "Transitive reasoning-scalar max"
+    },
+    {
+        "question": "Milo the dog weighs more than Luna the cat. Luna weighs more than Nori the rabbit. Which animal is the lightest? Options: [Milo, Luna, Nori].",
+        "answer": "Nori",
+        "task_type": "Transitive reasoning-scalar max"
+    },
+    {
+        "question": "Mount Bluff is higher than Mount Astra. Mount Crest is lower than Mount Bluff. Mount Dune is higher than Mount Bluff. Mount Ember is lower than Mount Astra. Mount Flint is higher than Mount Dune. Which mountain has the greatest elevation? Options: [Mount Astra, Mount Bluff, Mount Crest, Mount Dune, Mount Ember, Mount Flint].",
+        "answer": "Mount Flint",
+        "task_type": "Transitive reasoning-scalar max"
+    },
+    {
+        "question": "Sara scored higher than Tom on the intelligence test. Uma scored lower than Sara but higher than Victor. Tom scored higher than Victor. Who achieved the highest score? Options: [Sara, Tom, Uma, Victor].",
+        "answer": "Sara",
+        "task_type": "Transitive reasoning-scalar max"
+    },
+    {
+        "question": "Train A takes less time to travel between the two cities than Train B. Train C takes more time than Train B. Train D takes less time than Train A. Train E takes more time than Train C. Which train is the fastest? Options: [Train A, Train B, Train C, Train D, Train E].",
+        "answer": "Train D",
+        "task_type": "Transitive reasoning-scalar max"
+    },
+    {
+        "question": "Jar X holds more water than Jar Y. Jar Z holds less water than Jar Y. Which jar has the least water? Options: [Jar X, Jar Y, Jar Z].",
+        "answer": "Jar Z",
+        "task_type": "Transitive reasoning-scalar max"
+    },
+    {
+        "question": "Tera orbits farther from the star than Solis. Umbra orbits closer to the star than Solis. Rhea orbits farther from the star than Tera. Which planet is closest to the star? Options: [Rhea, Solis, Tera, Umbra].",
+        "answer": "Umbra",
+        "task_type": "Transitive reasoning-scalar max"
+    },
+    {
+        "question": "In a bike race, Alex finished before Brooke. Casey finished after Brooke. Dylan finished before Alex. Evan finished after Casey. Who finished last? Options: [Alex, Brooke, Casey, Dylan, Evan].",
+        "answer": "Evan",
+        "task_type": "Transitive reasoning-scalar max"
+    },
+    {
+        "question": "Player Kai reached a higher level than Leo in the video game. Maya reached a higher level than Kai. Who reached the highest level? Options: [Kai, Leo, Maya].",
+        "answer": "Maya",
+        "task_type": "Transitive reasoning-scalar max"
+    },
+    {
+        "question": "The Hawks have more league points than the Lions. The Bears have fewer points than the Lions. The Sharks have more points than the Hawks. Which team has the fewest points? Options: [Hawks, Lions, Bears, Sharks].",
+        "answer": "Bears",
+        "task_type": "Transitive reasoning-scalar max"
+    }
+]
