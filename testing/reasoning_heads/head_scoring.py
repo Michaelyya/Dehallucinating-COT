@@ -190,9 +190,9 @@ class AblationScorer(HeadScorer):
         subtask_name: str,
         debug: bool = False
     ) -> HeadScore:
-        # Use a smaller subset for faster scoring
-        # For initial discovery, use just 2-3 examples per head
-        scoring_examples = examples[:min(3, len(examples))]
+        # Use all examples for more reliable scoring
+        # This ensures we get meaningful differences between baseline and ablated
+        scoring_examples = examples
         
         # Get baseline performance (only debug first head to avoid spam)
         baseline_debug = debug
@@ -463,51 +463,49 @@ class AblationScorer(HeadScorer):
                 # Also extract simplified answer from generated text
                 generated_simplified = self._extract_simplified_answer(generated_text)
                 
-                # Check exact match first (Yes/No extraction) - give 100% for exact match
+                # Always calculate BLEU on full reference text for more nuanced scoring
+                reference_tokens = reference_full.lower().split()
+                generated_tokens_list = generated_text.lower().split()
+                
+                if USE_NLTK_BLEU:
+                    smoothing = SmoothingFunction().method1
+                    bleu_full = sentence_bleu(
+                        [reference_tokens],
+                        generated_tokens_list,
+                        smoothing_function=smoothing
+                    )
+                elif USE_EVALUATE_LIB:
+                    result = bleu_metric.compute(
+                        predictions=[generated_tokens_list],
+                        references=[[reference_tokens]]
+                    )
+                    bleu_full = result.get("bleu", 0.0)
+                else:
+                    bleu_full = simple_bleu(reference_tokens, generated_tokens_list)
+                
+                # Check if reference itself is already simplified (short answer like "yes", "no")
+                # Only give exact match bonus if reference is already simple
+                reference_is_simple = (
+                    len(reference_full.strip().split()) <= 3 and 
+                    reference_full.strip().lower() in ["yes", "no", "unanswerable", "it is not possible to tell"]
+                )
+                
+                # If simplified answers match AND reference is already simple, use exact match
                 if reference_simplified in ["yes", "no", "unanswerable"]:
                     if generated_simplified.lower() == reference_simplified.lower():
-                        # Exact match! Give 100% score
-                        bleu = 1.0
-                    else:
-                        # No exact match, use BLEU score with full reference
-                        reference_tokens = reference_full.lower().split()
-                        generated_tokens_list = generated_text.lower().split()
-                        
-                        if USE_NLTK_BLEU:
-                            smoothing = SmoothingFunction().method1
-                            bleu = sentence_bleu(
-                                [reference_tokens],
-                                generated_tokens_list,
-                                smoothing_function=smoothing
-                            )
-                        elif USE_EVALUATE_LIB:
-                            result = bleu_metric.compute(
-                                predictions=[generated_tokens_list],
-                                references=[[reference_tokens]]
-                            )
-                            bleu = result.get("bleu", 0.0)
+                        if reference_is_simple:
+                            # Reference is already simple, exact match = 100%
+                            bleu = 1.0
                         else:
-                            bleu = simple_bleu(reference_tokens, generated_tokens_list)
-                else:
-                    # Reference not simplified, use full reference for BLEU
-                    reference_tokens = reference_full.lower().split()
-                    generated_tokens_list = generated_text.lower().split()
-                    
-                    if USE_NLTK_BLEU:
-                        smoothing = SmoothingFunction().method1
-                        bleu = sentence_bleu(
-                            [reference_tokens],
-                            generated_tokens_list,
-                            smoothing_function=smoothing
-                        )
-                    elif USE_EVALUATE_LIB:
-                        result = bleu_metric.compute(
-                            predictions=[generated_tokens_list],
-                            references=[[reference_tokens]]
-                        )
-                        bleu = result.get("bleu", 0.0)
+                            # Reference is longer, use BLEU but with bonus for exact match on simplified
+                            # Use max of BLEU and 0.9 (exact match on simplified gets high score)
+                            bleu = max(bleu_full, 0.9)
                     else:
-                        bleu = simple_bleu(reference_tokens, generated_tokens_list)
+                        # No exact match, use BLEU on full reference
+                        bleu = bleu_full
+                else:
+                    # Reference not simplified, use BLEU on full reference
+                    bleu = bleu_full
                 
                 bleu_scores.append(bleu)
                 
