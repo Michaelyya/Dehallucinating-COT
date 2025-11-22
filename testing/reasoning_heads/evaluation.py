@@ -35,11 +35,7 @@ class BenchmarkResult:
         }
 
 
-class ReasoningHeadEvaluator:
-    """
-    Evaluates the effect of masking reasoning heads on benchmark performance.
-    """
-    
+class ReasoningHeadEvaluator:   
     def __init__(
         self,
         discovery: ReasoningHeadDiscovery,
@@ -60,20 +56,6 @@ class ReasoningHeadEvaluator:
         subtask_filter: Optional[str] = None,
         top_k_heads: Optional[int] = None
     ) -> Tuple[BenchmarkResult, BenchmarkResult]:
-        """
-        Evaluate benchmark with and without reasoning head masking.
-        
-        Args:
-            benchmark_name: Name of benchmark (hotpotqa, meqa, musique)
-            config_path: Path to benchmark config file
-            discovered_heads: List of discovered reasoning heads
-            baseline_config_path: Optional path to baseline config
-            subtask_filter: Optional subtask name to filter heads
-            top_k_heads: Optional number of top heads to mask
-        
-        Returns:
-            Tuple of (baseline_result, masked_result)
-        """
         print(f"\nEvaluating {benchmark_name} benchmark")
         
         # Get heads to mask

@@ -132,20 +132,6 @@ class HeadScorer(ABC):
         max_layers: Optional[int] = None,
         max_heads_per_layer: Optional[int] = None
     ) -> List[HeadScore]:
-        print("  Testing ablation mechanism...")
-        test_input = "The capital of France is"
-        test_ids = self.tokenizer.encode(test_input, return_tensors="pt").to(self.device)
-        
-        # Test without ablation
-        with torch.no_grad():
-            normal_out = self.model.generate(test_ids, max_new_tokens=5, do_sample=False)
-        normal_text = self.tokenizer.decode(normal_out[0])
-        
-        # Test with ablation
-        with torch.no_grad():
-            ablated_out = self._generate_with_ablation(test_ids, [(0, 0)])
-        ablated_text = self.tokenizer.decode(ablated_out[0])
-
         if n_layers is None:
             n_layers = getattr(self.model.config, 'num_hidden_layers', 
                              getattr(self.model.config, 'n_layers', 32))
@@ -774,41 +760,51 @@ class AblationScorer(HeadScorer):
         return answer_text
     
     def _format_cognitive_mirrors_example(self, example: Dict[str, Any]) -> str:
-        """Format CognitiveMirrors example for model input."""
+        """Format CognitiveMirrors example for model input using the specified prompt format."""
         question = example.get("question", "")
         subquestion = example.get("subquestion", "")
         
+        # Build prior knowledge (CoT) from previous subquestions if available
+        prior_knowledge = ""
+        if "full_example" in example and "generated" in example["full_example"]:
+            # Get previous subquestions for context (CoT format)
+            generated = example["full_example"]["generated"]
+            for item in generated:
+                if item.get("subquestion") != subquestion:  # Exclude current subquestion
+                    prior_knowledge += f"Q: {item.get('subquestion', '')}\nA: {item.get('answer', '')}\n"
+        
+        if not prior_knowledge.strip():
+            prior_knowledge = "No prior knowledge available."
+        
+        # Construct the prompt according to the specified format
+        prompt = (
+            "Prompt: You are an expert in analytical and logical reasoning. "
+            "You will be given a main question and prior knowledge in chain-of-thought (CoT) format. "
+            "Your task is to answer a follow-up subquestion using the information provided.\n"
+            "Here is the main question:.\n"
+            "<main question> " + question + " </main question>\n"
+            "Here is the prior knowledge in chain-of-thought (CoT) format.\n"
+            "<prior knowledge> " + prior_knowledge.strip() + " </prior knowledge>\n"
+            "Here is the subquestion:\n"
+            "<subquestion> " + subquestion + " </subquestion>\n"
+            "Instructions:\n"
+            "Answer the subquestion carefully.\n"
+            "You can use the information in the prior knowledge to help you answer the subquestion.\n"
+            "Your response should be clear and concise.\n"
+            "Stick to factual reasoning based on provided CoT.\n"
+            "Do not include any explanation, commentary, or code.\n"
+            "Do not output anything after the closing square bracket ']'.\n"
+            "Only output your final answer using this format: [ \"answer\": \"<Your answer here>\" ]\n"
+            "Your answer:"
+        )
+        
         # Check if tokenizer has a chat template (for instruct models)
         if hasattr(self.tokenizer, 'apply_chat_template') and self.tokenizer.chat_template is not None:
-            # Build context from previous subquestions if available
-            context = ""
-            if "full_example" in example and "generated" in example["full_example"]:
-                # Get previous subquestions for context
-                generated = example["full_example"]["generated"]
-                for item in generated:
-                    if item.get("cognitive_skill") == "Retrieval" and item.get("subquestion") != subquestion:
-                        context += f"Q: {item.get('subquestion', '')}\nA: {item.get('answer', '')}\n"
-            
-            if not context:
-                context = "No prior knowledge.\n"
-            
-            user_content = f"Main Question: {question}\n\n"
-            user_content += f"Context:\n{context}\n"
-            user_content += f"Subquestion: {subquestion}\n"
-            user_content += f"Answer:"
-            
+            # Use chat template but with the new prompt format
             messages = [
                 {
-                    "role": "system",
-                    "content": (
-                        "You are a helpful assistant that answers logical reasoning questions. "
-                        "Given a main question, context from previous subquestions, and a logical reasoning subquestion, "
-                        "provide a clear and accurate answer."
-                    )
-                },
-                {
                     "role": "user",
-                    "content": user_content
+                    "content": prompt
                 }
             ]
             
@@ -819,8 +815,8 @@ class AblationScorer(HeadScorer):
             )
             return formatted
         else:
-            # Simple format for base models
-            return f"Question: {question}\nSubquestion: {subquestion}\nAnswer:"
+            # For base models, return the prompt directly
+            return prompt
     
     def _check_correctness(
         self,
