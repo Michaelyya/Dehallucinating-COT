@@ -23,10 +23,6 @@ USE_EVALUATE_LIB = False
 bleu_metric = None
 
 def simple_bleu(reference_tokens, candidate_tokens, n=4):
-    """
-    Simple BLEU score implementation as fallback.
-    Computes n-gram precision with brevity penalty.
-    """
     if len(candidate_tokens) == 0:
         return 0.0
     if len(reference_tokens) == 0:
@@ -136,6 +132,20 @@ class HeadScorer(ABC):
         max_layers: Optional[int] = None,
         max_heads_per_layer: Optional[int] = None
     ) -> List[HeadScore]:
+        print("  Testing ablation mechanism...")
+        test_input = "The capital of France is"
+        test_ids = self.tokenizer.encode(test_input, return_tensors="pt").to(self.device)
+        
+        # Test without ablation
+        with torch.no_grad():
+            normal_out = self.model.generate(test_ids, max_new_tokens=5, do_sample=False)
+        normal_text = self.tokenizer.decode(normal_out[0])
+        
+        # Test with ablation
+        with torch.no_grad():
+            ablated_out = self._generate_with_ablation(test_ids, [(0, 0)])
+        ablated_text = self.tokenizer.decode(ablated_out[0])
+
         if n_layers is None:
             n_layers = getattr(self.model.config, 'num_hidden_layers', 
                              getattr(self.model.config, 'n_layers', 32))
@@ -152,6 +162,14 @@ class HeadScorer(ABC):
         total_heads = max_layers * max_heads_per_layer
         print(f"  Scoring {total_heads} heads ({max_layers} layers × {max_heads_per_layer} heads per layer)")
         
+        # Calculate baseline ONCE for all heads (more efficient and ensures consistency)
+        print(f"  Calculating baseline performance (no heads ablated)...")
+        baseline_metrics = self._evaluate_subtask(
+            examples, subtask_name, ablated_heads=None, debug=False
+        )
+        baseline_acc = baseline_metrics.get("accuracy", 0)
+        print(f"  Baseline BLEU: {baseline_acc:.4f}")
+        
         scores = []
         from tqdm import tqdm
         
@@ -163,7 +181,11 @@ class HeadScorer(ABC):
                 try:
                     # Only debug first head of first layer
                     debug = first_head and layer == 0 and head == 0
-                    score = self.score_head(layer, head, examples, subtask_name, debug=debug)
+                    # Pass baseline to avoid recalculating
+                    score = self.score_head(
+                        layer, head, examples, subtask_name, 
+                        baseline_acc=baseline_acc, debug=debug
+                    )
                     scores.append(score)
                     first_head = False  # Turn off after first
                 except Exception as e:
@@ -188,25 +210,34 @@ class AblationScorer(HeadScorer):
         head: int,
         examples: List[Dict[str, Any]],
         subtask_name: str,
+        baseline_acc: Optional[float] = None,
         debug: bool = False
     ) -> HeadScore:
         # Use all examples for more reliable scoring
         # This ensures we get meaningful differences between baseline and ablated
         scoring_examples = examples
         
-        # Get baseline performance (only debug first head to avoid spam)
-        baseline_debug = debug
-        baseline_metrics = self._evaluate_subtask(
-            scoring_examples, subtask_name, ablated_heads=None, debug=baseline_debug
-        )
+        # Get baseline performance (reuse if provided, otherwise calculate)
+        if baseline_acc is None:
+            baseline_debug = debug
+            baseline_metrics = self._evaluate_subtask(
+                scoring_examples, subtask_name, ablated_heads=None, debug=baseline_debug
+            )
+            baseline_acc = baseline_metrics.get("accuracy", 0)
+        else:
+            # Use provided baseline (calculated once for all heads)
+            baseline_acc = baseline_acc
         
         # Get performance with head ablated (also debug if in debug mode)
+        # IMPORTANT: Make sure we're actually ablating the specific head
+        if debug:
+            print(f"\n    Ablating Layer {layer}, Head {head}...")
+        
         ablated_metrics = self._evaluate_subtask(
             scoring_examples, subtask_name, ablated_heads=[(layer, head)], debug=debug
         )
         
         # Calculate score as absolute performance drop
-        baseline_acc = baseline_metrics.get("accuracy", 0)  # This is BLEU score for CognitiveMirrors
         ablated_acc = ablated_metrics.get("accuracy", 0)
         
         # Score calculation: baseline - ablated
@@ -226,6 +257,7 @@ class AblationScorer(HeadScorer):
             print(f"      Baseline accuracy: {baseline_acc:.4f}")
             print(f"      Ablated accuracy: {ablated_acc:.4f}")
             print(f"      Score: {score:.4f}")
+            print(f"      Ablated heads used: [(layer={layer}, head={head})]")
         
         return HeadScore(
             layer=layer,
@@ -543,49 +575,81 @@ class AblationScorer(HeadScorer):
             "correct": len(bleu_scores),
             "total": len(examples)
         }
-    
+        
     def _generate_with_ablation(
         self,
         input_ids: torch.Tensor,
         ablated_heads: List[Tuple[int, int]]
     ) -> torch.Tensor:
-        # This is a simplified version - actual implementation depends on model architecture
-        # For now, we'll use a hook-based approach
+        """Generate with specific heads ablated using hooks."""
         
-        def ablation_hook(module, input, output, layer_idx, head_idx):
-            if self.ablation_type == "zero":
-                # Zero out the head's contribution
-                output[:, head_idx, :, :] = 0
-            elif self.ablation_type == "random":
-                # Randomize the head's contribution
-                output[:, head_idx, :, :] = torch.randn_like(output[:, head_idx, :, :])
-            return output
+        # Store original attention weights
+        hooks = []
         
-        # Register hooks (simplified - actual implementation needs proper hook registration)
-        # For now, we'll use the block_list mechanism if available
-        if hasattr(self.model, 'generate'):
-            # Try to use block_list if model supports it
-            try:
-                output = self.model.generate(
-                    input_ids,
-                    max_new_tokens=100,  # Increased for longer paths
-                    do_sample=False,
-                    temperature=1.0,  # Not used when do_sample=False, but explicit
-                    pad_token_id=self.tokenizer.eos_token_id,
-                    eos_token_id=self.tokenizer.eos_token_id,
-                    block_list=ablated_heads
-                )
+        def create_hook(layer_idx, head_idx):
+            def hook_fn(module, input, output):
+                # Assuming output is (batch, heads, seq, seq) for attention weights
+                # Or (batch, seq, hidden) for attention output
+                if isinstance(output, tuple):
+                    # Some models return (attn_output, attn_weights)
+                    attn_output = output[0]
+                else:
+                    attn_output = output
+                    
+                # Get dimensions
+                if len(attn_output.shape) == 3:  # (batch, seq, hidden)
+                    batch_size, seq_len, hidden_dim = attn_output.shape
+                    n_heads = self.model.config.num_attention_heads
+                    head_dim = hidden_dim // n_heads
+                    
+                    # Reshape to separate heads
+                    attn_output = attn_output.view(batch_size, seq_len, n_heads, head_dim)
+                    # Zero out the specified head
+                    attn_output[:, :, head_idx, :] = 0
+                    # Reshape back
+                    attn_output = attn_output.view(batch_size, seq_len, hidden_dim)
+                    
+                    if isinstance(output, tuple):
+                        return (attn_output,) + output[1:]
+                    return attn_output
                 return output
-            except:
-                pass
+            return hook_fn
         
-        # Fallback: standard generation
-        return self.model.generate(
-            input_ids,
-            max_new_tokens=50,
-            do_sample=False,
-            pad_token_id=self.tokenizer.eos_token_id
-        )
+        # Register hooks for each head to ablate
+        try:
+            for layer_idx, head_idx in ablated_heads:
+                # Find the attention module for this layer
+                if hasattr(self.model, 'model') and hasattr(self.model.model, 'layers'):
+                    # Llama/Mistral style
+                    attn_module = self.model.model.layers[layer_idx].self_attn
+                elif hasattr(self.model, 'transformer') and hasattr(self.model.transformer, 'h'):
+                    # GPT-2 style
+                    attn_module = self.model.transformer.h[layer_idx].attn
+                else:
+                    # Try to find it generically
+                    continue
+                    
+                hook = attn_module.register_forward_hook(create_hook(layer_idx, head_idx))
+                hooks.append(hook)
+            
+            # Generate with hooks active
+            output = self.model.generate(
+                input_ids,
+                max_new_tokens=150,
+                do_sample=False,
+                pad_token_id=self.tokenizer.eos_token_id,
+                eos_token_id=self.tokenizer.eos_token_id,
+                use_cache=True
+            )
+            
+        finally:
+            # Remove hooks
+            for hook in hooks:
+                hook.remove()
+        
+        return output
+            
+       
     
     def _format_example(self, example: Dict[str, Any]) -> str:
         """
@@ -874,7 +938,6 @@ class CausalPatchingScorer(HeadScorer):
             clean_examples = examples
             corrupted_examples = examples
         
-        # Get baseline logit difference
         baseline_diff = self._get_logit_difference(clean_examples, corrupted_examples, subtask_name)
         
         # Get patched logit difference
