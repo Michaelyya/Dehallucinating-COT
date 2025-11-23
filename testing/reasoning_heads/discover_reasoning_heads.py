@@ -104,12 +104,26 @@ def main():
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
     
+    # Try to load using factory (for models that support block_list)
+    # Falls back to direct loading if factory doesn't support the model
     try:
         from src.factories import get_model
         from src.configs import ModelConfigs, DecoderConfigs, ModelConfig, DecoderConfig
         
+        # Determine model type from name
+        model_name_lower = args.model_name.lower()
+        if "qwen" in model_name_lower or "qwen2" in model_name_lower or "qwen3" in model_name_lower:
+            model_type_name = "Qwen-Instruct"
+        elif "llama" in model_name_lower:
+            model_type_name = "LLaMA3-8b-Instruct"
+        elif "mistral" in model_name_lower:
+            model_type_name = "Mistral-Instruct"
+        else:
+            # Generic fallback
+            model_type_name = args.model_name.split("/")[-1] if "/" in args.model_name else args.model_name
+        
         model_configs = ModelConfigs(
-            name="LLaMA3-8b-Instruct",
+            name=model_type_name,
             model_type="instruct",
             configs=ModelConfig(
                 model_name_or_path=args.model_name,
@@ -126,8 +140,10 @@ def main():
         
         model_wrapper = get_model(model_configs, decoder_configs)
         model = model_wrapper.model
+        print(f"✓ Loaded model using factory (supports block_list)")
     except Exception as e:
         print(f"Warning: Could not load model using factory, using direct loading: {e}")
+        print(f"  Note: Direct loading will use hook-based ablation instead of block_list")
         model = AutoModelForCausalLM.from_pretrained(
             args.model_name,
             torch_dtype=torch.bfloat16,
