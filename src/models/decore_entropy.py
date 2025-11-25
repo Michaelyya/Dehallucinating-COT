@@ -1,4 +1,5 @@
 from typing import List, Optional, Tuple
+from contextlib import contextmanager
 
 import copy
 import os
@@ -20,6 +21,11 @@ class DeCoReEntropy(BaseModel):
         decoder_configs: DecoderConfigs,
     ):
         super().__init__(model_configs, decoder_configs)
+        
+        # Check if model supports native block_list
+        self.supports_block_list = getattr(self, 'supports_block_list', True)
+        if not self.supports_block_list:
+            print(f"[DeCoReEntropy] Model does not support native block_list, will use hooks for head ablation")
 
         if decoder_configs.configs.amateur_model_name_or_path is not None:
             if "llama" in decoder_configs.configs.amateur_model_name_or_path.lower():
@@ -52,6 +58,92 @@ class DeCoReEntropy(BaseModel):
         self.alpha_cap = decoder_configs.configs.get("alpha_cap", None)
 
         self.scale_alpha = decoder_configs.configs.get("scale_alpha", False)
+        
+        # For hook-based ablation
+        self._ablation_hooks = []
+
+    def _get_attention_layers(self):
+        """Get the attention layers from the model for hook registration."""
+        layers = []
+        # Try different model architectures
+        if hasattr(self.model, 'model') and hasattr(self.model.model, 'layers'):
+            # Llama/Mistral/Qwen style
+            for layer in self.model.model.layers:
+                if hasattr(layer, 'self_attn'):
+                    layers.append(layer.self_attn)
+        elif hasattr(self.model, 'transformer') and hasattr(self.model.transformer, 'h'):
+            # GPT-2 style
+            for layer in self.model.transformer.h:
+                if hasattr(layer, 'attn'):
+                    layers.append(layer.attn)
+        return layers
+
+    def _create_ablation_hook(self, head_idx, num_heads):
+        """Create a hook that zeros out a specific attention head."""
+        def hook_fn(module, args, output):
+            # Handle different output formats
+            if isinstance(output, tuple):
+                attn_output = output[0]
+                rest = output[1:]
+            else:
+                attn_output = output
+                rest = None
+            
+            # Get dimensions - attn_output is typically (batch, seq, hidden)
+            if len(attn_output.shape) == 3:
+                batch_size, seq_len, hidden_dim = attn_output.shape
+                head_dim = hidden_dim // num_heads
+                
+                # Reshape, zero out head, reshape back
+                attn_output = attn_output.view(batch_size, seq_len, num_heads, head_dim)
+                attn_output = attn_output.clone()  # Avoid in-place modification
+                attn_output[:, :, head_idx, :] = 0
+                attn_output = attn_output.view(batch_size, seq_len, hidden_dim)
+                
+                if rest is not None:
+                    return (attn_output,) + rest
+                return attn_output
+            return output
+        return hook_fn
+
+    @contextmanager
+    def _ablate_heads_with_hooks(self):
+        """Context manager to ablate retrieval heads using forward hooks."""
+        hooks = []
+        try:
+            layers = self._get_attention_layers()
+            num_heads = self.model.config.num_attention_heads
+            
+            for layer_idx, head_idx in self.retrieval_heads:
+                if layer_idx < len(layers):
+                    hook = layers[layer_idx].register_forward_hook(
+                        self._create_ablation_hook(head_idx, num_heads)
+                    )
+                    hooks.append(hook)
+            yield
+        finally:
+            for hook in hooks:
+                hook.remove()
+
+    def _model_forward_with_ablation(self, input_ids, past_key_values, use_cache, attn_mode=None):
+        """Forward pass with head ablation - uses hooks if block_list not supported."""
+        if self.supports_block_list:
+            # Use native block_list support
+            return self.model(
+                input_ids=input_ids,
+                past_key_values=past_key_values,
+                use_cache=use_cache,
+                attn_mode=attn_mode,
+                block_list=self.retrieval_heads,
+            )
+        else:
+            # Use hooks for ablation
+            with self._ablate_heads_with_hooks():
+                return self.model(
+                    input_ids=input_ids,
+                    past_key_values=past_key_values,
+                    use_cache=use_cache,
+                )
 
     def _load_retrieval_heads(self, model_name_or_path):
         print(f"Loading retrieval heads {model_name_or_path}")
@@ -112,18 +204,27 @@ class DeCoReEntropy(BaseModel):
             for _ in range(self.max_new_tokens):
                 last_input_token = last_input_token.view(1, 1)
 
-                base_outputs = self.model(
-                    input_ids=last_input_token,
-                    past_key_values=base_past_kv,
-                    use_cache=True,
-                    attn_mode=self.attn_mode,
-                )
-                hallucinated_outputs = self.model(
+                # Base model forward (no ablation)
+                if self.supports_block_list:
+                    base_outputs = self.model(
+                        input_ids=last_input_token,
+                        past_key_values=base_past_kv,
+                        use_cache=True,
+                        attn_mode=self.attn_mode,
+                    )
+                else:
+                    base_outputs = self.model(
+                        input_ids=last_input_token,
+                        past_key_values=base_past_kv,
+                        use_cache=True,
+                    )
+                
+                # Hallucinated model forward (with head ablation)
+                hallucinated_outputs = self._model_forward_with_ablation(
                     input_ids=last_input_token,
                     past_key_values=hallucinated_past_kv,
                     use_cache=True,
-                    attn_mode=self.attn_mode,
-                    block_list=self.retrieval_heads,
+                    attn_mode=self.attn_mode if self.supports_block_list else None,
                 )
 
                 base_past_kv = base_outputs.past_key_values
@@ -290,10 +391,16 @@ class DeCoReEntropy(BaseModel):
             ).to(self.model.device)
             continue_ids = input_ids[0, prefix_ids.shape[-1] :]
 
-            base_outputs = self.model(input_ids, attn_mode=self.attn_mode)[0]
-            hallucinated_outputs = self.model(
-                input_ids, block_list=self.retrieval_heads, attn_mode=self.attn_mode
-            )[0]
+            # Base model forward
+            if self.supports_block_list:
+                base_outputs = self.model(input_ids, attn_mode=self.attn_mode)[0]
+                hallucinated_outputs = self.model(
+                    input_ids, block_list=self.retrieval_heads, attn_mode=self.attn_mode
+                )[0]
+            else:
+                base_outputs = self.model(input_ids)[0]
+                with self._ablate_heads_with_hooks():
+                    hallucinated_outputs = self.model(input_ids)[0]
 
             base_logits = base_outputs[0, prefix_ids.shape[-1] - 1 : -1, :]
             hallucinated_logits = hallucinated_outputs[

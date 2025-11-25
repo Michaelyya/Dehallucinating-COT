@@ -46,6 +46,7 @@ class BaseModel(ABC):
                     # FlashAttention2 not available, force torch mode
                     self.attn_mode = "torch"
                     print(f"[INIT] Model '{model_configs.name}' initialized with attention mode: torch (flash_attn not available)")
+                self.supports_block_list = True
             except ImportError:
                 # FlashAttention2 not available, use eager attention
                 self.model = LlamaForCausalLM.from_pretrained(
@@ -54,6 +55,7 @@ class BaseModel(ABC):
                     device_map="auto",
                 ).eval()
                 self.attn_mode = "torch"
+                self.supports_block_list = True
                 print(f"[INIT] Model '{model_configs.name}' initialized with attention mode: torch (ImportError during model loading)")
         elif "mistral" in model_configs.name.lower():
             self.model = MistralForCausalLM.from_pretrained(
@@ -65,8 +67,9 @@ class BaseModel(ABC):
                 trust_remote_code=True,
             ).eval()
             self.attn_mode = "flash"
-        elif "qwen2" in model_configs.name.lower() or "qwen3" in model_configs.name.lower() or "qwen" in model_configs.name.lower():
-            # Handle Qwen2, Qwen3, and other Qwen variants
+            self.supports_block_list = True
+        elif "qwen2" in model_configs.name.lower() and "qwen3" not in model_configs.name.lower():
+            # Handle Qwen2 specifically (not Qwen3) - use custom class with block_list support
             try:
                 self.model = Qwen2ForCausalLM.from_pretrained(
                     model_configs.configs.model_name_or_path,
@@ -76,24 +79,52 @@ class BaseModel(ABC):
                     device_map="auto",
                 ).eval()
                 self.attn_mode = "flash"
-                print(f"[INIT] Model '{model_configs.name}' initialized with attention mode: flash")
+                self.supports_block_list = True
+                print(f"[INIT] Model '{model_configs.name}' initialized with custom Qwen2 (flash attention, block_list support)")
             except Exception as e:
-                print(f"[INIT] Flash attention failed for Qwen: {e}, falling back to eager attention")
+                print(f"[INIT] Flash attention failed for Qwen2: {e}, falling back to eager attention")
                 self.model = Qwen2ForCausalLM.from_pretrained(
                     model_configs.configs.model_name_or_path,
                     torch_dtype="auto",
                     device_map="auto",
                 ).eval()
                 self.attn_mode = "torch"
+                self.supports_block_list = True
+        elif "qwen3" in model_configs.name.lower() or "qwen" in model_configs.name.lower():
+            # Handle Qwen3 and other Qwen variants - use AutoModelForCausalLM
+            # (Qwen3 has different architecture than Qwen2, custom class doesn't work)
+            print(f"[INIT] Loading Qwen3/Qwen model '{model_configs.name}' with AutoModelForCausalLM")
+            try:
+                self.model = AutoModelForCausalLM.from_pretrained(
+                    model_configs.configs.model_name_or_path,
+                    attn_implementation="flash_attention_2",
+                    torch_dtype=torch.bfloat16,
+                    device_map="auto",
+                    trust_remote_code=True,
+                ).eval()
+                self.attn_mode = "flash"
+                print(f"[INIT] Model '{model_configs.name}' initialized with flash attention")
+            except Exception as e:
+                print(f"[INIT] Flash attention failed: {e}, falling back to eager attention")
+                self.model = AutoModelForCausalLM.from_pretrained(
+                    model_configs.configs.model_name_or_path,
+                    torch_dtype=torch.bfloat16,
+                    device_map="auto",
+                    trust_remote_code=True,
+                ).eval()
+                self.attn_mode = "torch"
+            self.supports_block_list = False  # Will use hooks for head ablation
         else:
             # Fallback: try to load with AutoModelForCausalLM
             print(f"[INIT] Unknown model type '{model_configs.name}', attempting AutoModelForCausalLM")
             self.model = AutoModelForCausalLM.from_pretrained(
                 model_configs.configs.model_name_or_path,
-                torch_dtype="auto",
+                torch_dtype=torch.bfloat16,
                 device_map="auto",
+                trust_remote_code=True,
             ).eval()
             self.attn_mode = "torch"
+            self.supports_block_list = False
 
         self.tokenizer = AutoTokenizer.from_pretrained(
             model_configs.configs.model_name_or_path
