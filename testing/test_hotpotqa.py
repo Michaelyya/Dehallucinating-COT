@@ -13,7 +13,7 @@ from tqdm import tqdm
 import wandb
 
 import sys
-sys.path.append('/cluster/scratch/yongyu/decore')
+sys.path.append('/cluster/scratch/yongyu/Dehallucinating-COT')
 
 from src.models.base_model import BaseModel
 from src.factories import get_model
@@ -103,7 +103,7 @@ class HotpotQATester:
         self.model = get_model(self.model_configs, self.decoder_configs)
         
         # Initialize dataset
-        hotpotqa_data_path = os.path.join("/cluster/scratch/yongyu/decore", config["data"]["data_dir"])
+        hotpotqa_data_path = os.path.join("/cluster/scratch/yongyu/Dehallucinating-COT", config["data"]["data_dir"])
         self.dataset = load_hotpotqa_dataset(
             data_path=hotpotqa_data_path,
             tokenizer=self.tokenizer,

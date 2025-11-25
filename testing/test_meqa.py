@@ -9,7 +9,7 @@ from tqdm import tqdm
 import wandb
 
 import sys
-sys.path.append('/cluster/scratch/yongyu/decore')
+sys.path.append('/cluster/scratch/yongyu/Dehallucinating-COT')
 
 from src.models.base_model import BaseModel
 from src.factories import get_model
@@ -102,7 +102,7 @@ class MEQATester:
         
         # Initialize dataset
         # Construct full path to MEQA data
-        meqa_data_path = os.path.join("/cluster/scratch/yongyu/decore", config["data"]["data_dir"])
+        meqa_data_path = os.path.join("/cluster/scratch/yongyu/Dehallucinating-COT", config["data"]["data_dir"])
         self.dataset = load_meqa_dataset(
             data_path=meqa_data_path,
             tokenizer=self.tokenizer,
