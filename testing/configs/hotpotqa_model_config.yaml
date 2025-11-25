@@ -21,10 +21,10 @@ data_loader:
 
 # Model configuration
 model:
-  name: "LLaMA3-8b-Instruct"
+  name: "Qwen/Qwen3-4B-Instruct-2507"
   model_type: "instruct"
   configs:
-    model_name_or_path: "meta-llama/Meta-Llama-3-8B-Instruct"
+    model_name_or_path: "Qwen/Qwen3-4B-Instruct-2507"
     max_seq_len: 4096
     max_new_tokens: 512  # Longer for CoT reasoning
 
@@ -34,7 +34,7 @@ decoder:
   method: "DeCoReEntropy"
   configs:
     retrieval_heads_dir: "../retrieval_heads/"
-    num_retrieval_heads: 10
+    num_retrieval_heads: 20
     post_softmax: true
     alpha_cap: null
     scale_alpha: false

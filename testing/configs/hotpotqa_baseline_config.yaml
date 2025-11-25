@@ -21,10 +21,10 @@ data_loader:
 
 # Model configuration
 model:
-  name: "LLaMA3-8b-Instruct"
+  name: "Qwen/Qwen3-4B-Instruct-2507"
   model_type: "instruct"
   configs:
-    model_name_or_path: "meta-llama/Meta-Llama-3-8B-Instruct"
+    model_name_or_path: "Qwen/Qwen3-4B-Instruct-2507"
     max_seq_len: 4096
     max_new_tokens: 512
 
