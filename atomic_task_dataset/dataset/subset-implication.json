@@ -1,0 +1,202 @@
+[
+    {
+        "question": "All pianists are musicians. Every musician enjoys music. Conclusion: All pianists enjoy music. Is this conclusion necessarily true? Options: [Yes, No].",
+        "answer": "Yes",
+        "task_type": "Transitive reasoning-subset/implication"
+    },
+    {
+        "question": "All doctors are college graduates. Some college graduates are artists. Conclusion: All doctors are artists. Is this conclusion necessarily true? Options: [Yes, No].",
+        "answer": "No",
+        "task_type": "Transitive reasoning-subset/implication"
+    },
+    {
+        "question": "Anyone who is a vegan does not eat meat. All marathon runners are vegans. Conclusion: No marathon runner eats meat. Is this conclusion necessarily true? Options: [Yes, No].",
+        "answer": "Yes",
+        "task_type": "Transitive reasoning-subset/implication"
+    },
+    {
+        "question": "If someone is a pilot, then they have a license. Anyone with a license has passed an exam. Conclusion: Everyone who is a pilot has passed an exam. Is this conclusion necessarily true? Options: [Yes, No].",
+        "answer": "Yes",
+        "task_type": "Transitive reasoning-subset/implication"
+    },
+    {
+        "question": "Every chemistry student is a science student. Every physics student is a science student. Conclusion: Every chemistry student is a physics student. Is this conclusion necessarily true? Options: [Yes, No].",
+        "answer": "No",
+        "task_type": "Transitive reasoning-subset/implication"
+    },
+    {
+        "question": "All poets are writers. Every writer who publishes their work is a public figure. Every public figure is listed in the database. All poets publish their work. Conclusion: All poets are listed in the database. Is this conclusion necessarily true? Options: [Yes, No].",
+        "answer": "Yes",
+        "task_type": "Transitive reasoning-subset/implication"
+    },
+    {
+        "question": "Whoever works in the research lab has a security badge. Anyone with a security badge can enter the main building. Conclusion: Whoever works in the research lab can enter the main building. Is this conclusion necessarily true? Options: [Yes, No].",
+        "answer": "Yes",
+        "task_type": "Transitive reasoning-subset/implication"
+    },
+    {
+        "question": "All apples are fruits. No fruits are made of metal. Conclusion: No apples are made of metal. Is this conclusion necessarily true? Options: [Yes, No].",
+        "answer": "Yes",
+        "task_type": "Transitive reasoning-subset/implication"
+    },
+    {
+        "question": "No cats are reptiles. All lizards are reptiles. Conclusion: No lizards are cats. Is this conclusion necessarily true? Options: [Yes, No].",
+        "answer": "Yes",
+        "task_type": "Transitive reasoning-subset/implication"
+    },
+    {
+        "question": "If someone studies law, then they read legal cases. Anyone who reads legal cases dislikes light reading. Conclusion: Anyone who studies law dislikes light reading. Is this conclusion necessarily true? Options: [Yes, No].",
+        "answer": "Yes",
+        "task_type": "Transitive reasoning-subset/implication"
+    },
+    {
+        "question": "No managers are interns. All engineers are employees. Conclusion: No engineers are interns. Is this conclusion necessarily true? Options: [Yes, No].",
+        "answer": "No",
+        "task_type": "Transitive reasoning-subset/implication"
+    },
+    {
+        "question": "All programmers use computers. Some computer users are gamers. Conclusion: Some programmers are gamers. Is this conclusion necessarily true? Options: [Yes, No].",
+        "answer": "No",
+        "task_type": "Transitive reasoning-subset/implication"
+    },
+    {
+        "question": "All roses are flowers. Some flowers are red. Conclusion: All roses are red. Is this conclusion necessarily true? Options: [Yes, No].",
+        "answer": "No",
+        "task_type": "Transitive reasoning-subset/implication"
+    },
+    {
+        "question": "Whoever is an astronaut is highly trained. Anyone who is highly trained can operate complex equipment. Conclusion: Whoever is an astronaut can operate complex equipment. Is this conclusion necessarily true? Options: [Yes, No].",
+        "answer": "Yes",
+        "task_type": "Transitive reasoning-subset/implication"
+    },
+    {
+        "question": "Whenever it rains, the ground becomes wet. Whenever the ground is wet, the match will not light. Conclusion: If it rains, then the match will not light. Is this conclusion necessarily true? Options: [Yes, No].",
+        "answer": "Yes",
+        "task_type": "Transitive reasoning-subset/implication"
+    },
+    {
+        "question": "All members of the chess club like puzzles. No one who likes puzzles hates logic. Conclusion: No member of the chess club hates logic. Is this conclusion necessarily true? Options: [Yes, No].",
+        "answer": "Yes",
+        "task_type": "Transitive reasoning-subset/implication"
+    },
+    {
+        "question": "All nurses are hospital staff. All hospital staff wear badges. Conclusion: Some nurses wear badges. Is this conclusion necessarily true? Options: [Yes, No].",
+        "answer": "No",
+        "task_type": "Transitive reasoning-subset/implication"
+    },
+    {
+        "question": "If a student is on the honor roll, then they have high grades. Some students with high grades are athletes. Conclusion: Some honor roll students are athletes. Is this conclusion necessarily true? Options: [Yes, No].",
+        "answer": "No",
+        "task_type": "Transitive reasoning-subset/implication"
+    },
+    {
+        "question": "Every car in the garage is blue. Every blue car belongs to Dana. Conclusion: Every car in the garage belongs to Dana. Is this conclusion necessarily true? Options: [Yes, No].",
+        "answer": "Yes",
+        "task_type": "Transitive reasoning-subset/implication"
+    },
+    {
+        "question": "Anyone who owns a dog is an animal lover. No animal lovers dislike pets. Conclusion: Anyone who owns a dog dislikes pets. Is this conclusion necessarily true? Options: [Yes, No].",
+        "answer": "No",
+        "task_type": "Transitive reasoning-subset/implication"
+    },
+    {
+        "question": "All surgeons are doctors. All doctors have medical training. Which of the following statements must be true? Options: [All surgeons have medical training; Some surgeons have no medical training; All people with medical training are surgeons].",
+        "answer": "All surgeons have medical training",
+        "task_type": "Transitive reasoning-subset/implication"
+    },
+    {
+        "question": "Every poet is an artist. No artist is an accountant. Which of the following statements must be true? Options: [No poet is an accountant; Some poets are accountants; Every accountant is a poet].",
+        "answer": "No poet is an accountant",
+        "task_type": "Transitive reasoning-subset/implication"
+    },
+    {
+        "question": "All philosophy students read a lot. Anyone who reads a lot buys many books. Everyone who buys many books spends money at bookstores. Which of the following statements must be true? Options: [All philosophy students spend money at bookstores; Some philosophy students never spend money at bookstores; Only philosophy students spend money at bookstores].",
+        "answer": "All philosophy students spend money at bookstores",
+        "task_type": "Transitive reasoning-subset/implication"
+    },
+    {
+        "question": "If someone is a cyclist, then they exercise regularly. Whenever someone exercises regularly, they are healthy. Which of the following statements must be true? Options: [If someone is a cyclist, then they are healthy; Everyone who is healthy is a cyclist; Some cyclists are not healthy].",
+        "answer": "If someone is a cyclist, then they are healthy",
+        "task_type": "Transitive reasoning-subset/implication"
+    },
+    {
+        "question": "All snakes are reptiles. No reptiles are warm-blooded. All warm-blooded animals are mammals. Which of the following statements must be true? Options: [No snakes are warm-blooded; No snakes are mammals; All mammals are reptiles].",
+        "answer": "No snakes are warm-blooded",
+        "task_type": "Transitive reasoning-subset/implication"
+    },
+    {
+        "question": "All math club members are students. All students at the university have ID cards. Anyone with an ID card can enter the library. Which of the following statements must be true? Options: [All math club members can enter the library; Only math club members can enter the library; Some math club members have no ID cards].",
+        "answer": "All math club members can enter the library",
+        "task_type": "Transitive reasoning-subset/implication"
+    },
+    {
+        "question": "Anyone whose paintings are shown in a gallery is an artist. Every artist practices regularly. Everyone who practices regularly improves. Which of the following statements must be true? Options: [Anyone whose paintings are shown in a gallery improves; Only artists whose paintings are in galleries improve; Some artists who practice regularly do not improve].",
+        "answer": "Anyone whose paintings are shown in a gallery improves",
+        "task_type": "Transitive reasoning-subset/implication"
+    },
+    {
+        "question": "All vegans avoid animal products. Anyone who avoids animal products does not eat cheese. Which of the following statements must be true? Options: [All vegans do not eat cheese; Some vegans eat cheese; Only vegans avoid animal products].",
+        "answer": "All vegans do not eat cheese",
+        "task_type": "Transitive reasoning-subset/implication"
+    },
+    {
+        "question": "If someone is a backend developer, then they are a programmer. All programmers know at least one programming language. Anyone who knows a programming language can write code. Which of the following statements must be true? Options: [If someone is a backend developer, then they can write code; Anyone who can write code is a backend developer; Some programmers do not know any programming language].",
+        "answer": "If someone is a backend developer, then they can write code",
+        "task_type": "Transitive reasoning-subset/implication"
+    },
+    {
+        "question": "Everyone who drives a car has a driver’s license. Anyone with a driver’s license has passed a driving test. Which of the following statements must be true? Options: [Everyone who drives a car has passed a driving test; Some people who have passed a driving test do not have a driver’s license; Everyone who has passed a driving test drives a car].",
+        "answer": "Everyone who drives a car has passed a driving test",
+        "task_type": "Transitive reasoning-subset/implication"
+    },
+    {
+        "question": "Every drummer is a musician. Every musician keeps a practice schedule. Which of the following statements must be true? Options: [Every drummer keeps a practice schedule; Some drummers do not keep a practice schedule; Only drummers keep a practice schedule].",
+        "answer": "Every drummer keeps a practice schedule",
+        "task_type": "Transitive reasoning-subset/implication"
+    },
+    {
+        "question": "All math teachers are teachers. All teachers at the school attend yearly training. Which of the following statements must be true? Options: [All math teachers at the school attend yearly training; Some teachers at the school do not attend yearly training; Only math teachers attend yearly training].",
+        "answer": "All math teachers at the school attend yearly training",
+        "task_type": "Transitive reasoning-subset/implication"
+    },
+    {
+        "question": "All marathon runners are athletes. All athletes in this club have gym memberships. Which of the following statements must be true? Options: [All marathon runners in this club have gym memberships; Some athletes in this club have no gym membership; Only marathon runners in this club have gym memberships].",
+        "answer": "All marathon runners in this club have gym memberships",
+        "task_type": "Transitive reasoning-subset/implication"
+    },
+    {
+        "question": "All accountants in the firm are employees. All employees receive income. Everyone who receives income pays taxes. Which of the following statements must be true? Options: [All accountants in the firm pay taxes; Some accountants in the firm do not receive income; Only accountants in the firm pay taxes].",
+        "answer": "All accountants in the firm pay taxes",
+        "task_type": "Transitive reasoning-subset/implication"
+    },
+    {
+        "question": "All librarians work in libraries. Anyone who works in a library handles books. Everyone who handles books can read. Which of the following statements must be true? Options: [All librarians can read; Some librarians cannot read; Only librarians can read].",
+        "answer": "All librarians can read",
+        "task_type": "Transitive reasoning-subset/implication"
+    },
+    {
+        "question": "No reptiles are warm-blooded. Every lizard is a reptile. All pets in this house are warm-blooded. Which of the following statements must be true? Options: [No lizards are pets in this house; Some lizards are pets in this house; All reptiles in this house are pets].",
+        "answer": "No lizards are pets in this house",
+        "task_type": "Transitive reasoning-subset/implication"
+    },
+    {
+        "question": "Anyone who smokes is not allowed in the clean-air zone. All staff members are allowed in the clean-air zone. Which of the following statements must be true? Options: [No staff members smoke; Some staff members smoke; Only staff members smoke].",
+        "answer": "No staff members smoke",
+        "task_type": "Transitive reasoning-subset/implication"
+    },
+    {
+        "question": "To be a certified diver, you have to pass a swimming test. Anyone who passes a swimming test can swim 200 meters without stopping. Which of the following statements must be true? Options: [Every certified diver can swim 200 meters without stopping; Some certified divers cannot swim 200 meters without stopping; Everyone who can swim 200 meters without stopping is a certified diver].",
+        "answer": "Every certified diver can swim 200 meters without stopping",
+        "task_type": "Transitive reasoning-subset/implication"
+    },
+    {
+        "question": "Whenever the alarm is armed, the door is locked. Whenever the door is locked, the store is secure. Which of the following statements must be true? Options: [Whenever the alarm is armed, the store is secure; Whenever the store is secure, the alarm is armed; The store is never secure when the alarm is armed].",
+        "answer": "Whenever the alarm is armed, the store is secure",
+        "task_type": "Transitive reasoning-subset/implication"
+    },
+    {
+        "question": "All physics students are science students. Every science student performs experiments. Anyone who performs experiments records data. Which of the following statements must be true? Options: [All physics students record data; Some physics students do not record data; Only physics students record data].",
+        "answer": "All physics students record data",
+        "task_type": "Transitive reasoning-subset/implication"
+    }
+]

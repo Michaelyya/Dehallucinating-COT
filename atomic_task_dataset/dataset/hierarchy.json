@@ -1,0 +1,202 @@
+[
+    {
+        "question": "In a startup, Alice manages Ben and Carla. Carla supervises David. David leads Erin. Ben reports directly to Alice. Who is Erin's top-level manager in this hierarchy? Options: [Alice, Ben, Carla, David, Erin].",
+        "answer": "Alice",
+        "task_type": "Transitive reasoning-hierarchy"
+    },
+    {
+        "question": "At a company, Fiona reports to George. George reports to Hannah. Hannah reports to Ivan. Who is Fiona's manager's manager? Options: [Fiona, George, Hannah, Ivan].",
+        "answer": "Hannah",
+        "task_type": "Transitive reasoning-hierarchy"
+    },
+    {
+        "question": "Within a design department, Julia is the team lead for Kevin and Lina. Lina manages Mark. Julia reports to Nathan, the department director. Who is Mark's top-level manager in this department? Options: [Julia, Kevin, Lina, Mark, Nathan].",
+        "answer": "Nathan",
+        "task_type": "Transitive reasoning-hierarchy"
+    },
+    {
+        "question": "In an office, Oscar is Paula's supervisor. Quentin reports to Paula. Rita works under Quentin. Oscar reports to Sam. Who is Rita's supervisor's supervisor? Options: [Oscar, Paula, Quentin, Rita, Sam].",
+        "answer": "Paula",
+        "task_type": "Transitive reasoning-hierarchy"
+    },
+    {
+        "question": "In a regional branch, Tom manages Uma and Victor. Victor supervises Wendy and Xander. Uma reports to Tom. Wendy leads Yolanda. Who is Yolanda's top-level manager in this branch? Options: [Tom, Uma, Victor, Wendy, Xander, Yolanda].",
+        "answer": "Tom",
+        "task_type": "Transitive reasoning-hierarchy"
+    },
+    {
+        "question": "At a university, Dean Angela oversees Chair Brian. Chair Brian oversees Professor Chloe and Professor Daniel. Professor Chloe supervises Teaching Assistant Ethan. Among Chloe, Daniel, Ethan, and Brian, who holds the highest position in the hierarchy? Options: [Angela, Brian, Chloe, Daniel, Ethan].",
+        "answer": "Brian",
+        "task_type": "Transitive reasoning-hierarchy"
+    },
+    {
+        "question": "Within a product team, Manager Iris supervises Lead Jack. Lead Jack supervises Engineer Kelly and Engineer Liam. Engineer Liam mentors Intern Maya. Which person is at the top of this team's hierarchy? Options: [Iris, Jack, Kelly, Liam, Maya].",
+        "answer": "Iris",
+        "task_type": "Transitive reasoning-hierarchy"
+    },
+    {
+        "question": "In a family, Nora is Olivia's mother. Olivia is Peter's mother. Peter is Quinn's father. Who is Quinn's grandmother? Options: [Nora, Olivia, Peter, Quinn].",
+        "answer": "Olivia",
+        "task_type": "Transitive reasoning-hierarchy"
+    },
+    {
+        "question": "In another family, Robert is Susan's father. Susan is Trevor's mother. Trevor is Uma's father. Who is the earliest ancestor of Uma mentioned here? Options: [Robert, Susan, Trevor, Uma].",
+        "answer": "Robert",
+        "task_type": "Transitive reasoning-hierarchy"
+    },
+    {
+        "question": "Victor is William's father. William is Xavier's father. Victor is also Yara's father. Xavier is Zoe's son. Who is Zoe's grandfather? Options: [Victor, William, Xavier, Yara, Zoe].",
+        "answer": "William",
+        "task_type": "Transitive reasoning-hierarchy"
+    },
+    {
+        "question": "Abby is Bella's mother. Bella is Carla's mother. Carla is Dylan's mother. Who is Dylan's mother's mother? Options: [Abby, Bella, Carla, Dylan].",
+        "answer": "Bella",
+        "task_type": "Transitive reasoning-hierarchy"
+    },
+    {
+        "question": "Eli is Frank's father. Frank is Gina's father. Gina is Harry's mother. Harry is Iris's father. Who is Iris's great-grandparent? Options: [Eli, Frank, Gina, Harry, Iris].",
+        "answer": "Frank",
+        "task_type": "Transitive reasoning-hierarchy"
+    },
+    {
+        "question": "In a club, Leader Alan is above Senior Member Beth in rank. Senior Member Beth is above Member Carl. Member Carl is above Probationary Member Dana. Who is directly two levels above Dana in this hierarchy? Options: [Alan, Beth, Carl, Dana].",
+        "answer": "Beth",
+        "task_type": "Transitive reasoning-hierarchy"
+    },
+    {
+        "question": "In a military unit, Colonel Emma holds a higher position than Major Fred. Major Fred holds a higher position than Captain Grace. Captain Grace holds a higher position than Lieutenant Henry. Among Fred, Grace, and Henry, who has the lowest rank? Options: [Emma, Fred, Grace, Henry].",
+        "answer": "Henry",
+        "task_type": "Transitive reasoning-hierarchy"
+    },
+    {
+        "question": "In a research group, Principal Investigator Irene is above Senior Researcher Jason. Jason supervises Postdoc Karen. Karen supervises PhD Student Leo. Leo supervises Undergraduate Assistant Mia. Who is Leo's highest-ranking supervisor mentioned here? Options: [Irene, Jason, Karen, Leo, Mia].",
+        "answer": "Irene",
+        "task_type": "Transitive reasoning-hierarchy"
+    },
+    {
+        "question": "In a gaming guild, Guild Master Noah holds a higher position than Officer Olivia. Officer Olivia holds a higher position than Veteran Player Paul and Regular Player Quinn. Regular Player Quinn holds a higher position than Newcomer Riley. Who is the top-ranked person in this guild according to this hierarchy? Options: [Noah, Olivia, Paul, Quinn, Riley].",
+        "answer": "Noah",
+        "task_type": "Transitive reasoning-hierarchy"
+    },
+    {
+        "question": "In a file system, Report.docx is inside the folder Reports. The folder Reports is inside the folder Projects. The folder Projects is on the drive WorkDrive. Considering only the locations mentioned, what is the most general container that still contains Report.docx? Options: [Report.docx, Reports, Projects, WorkDrive].",
+        "answer": "WorkDrive",
+        "task_type": "Transitive reasoning-hierarchy"
+    },
+    {
+        "question": "In a biological classification, a robin is a kind of thrush. A thrush is a kind of songbird. A songbird is a kind of bird. A bird is a kind of animal. What is the most general category here that still includes robins? Options: [robin, thrush, songbird, bird, animal].",
+        "answer": "animal",
+        "task_type": "Transitive reasoning-hierarchy"
+    },
+    {
+        "question": "In an organization chart, the Data Team belongs to the Analytics Department. The Analytics Department belongs to the Technology Division. The Technology Division belongs to the Global Operations Group. Which category is the most general category that still contains the Data Team? Options: [Data Team, Analytics Department, Technology Division, Global Operations Group].",
+        "answer": "Global Operations Group",
+        "task_type": "Transitive reasoning-hierarchy"
+    },
+    {
+        "question": "In a product taxonomy, Running Shoes is a subtype of Athletic Footwear. Athletic Footwear is a subtype of Footwear. Footwear is a subtype of Apparel. Which category is the most general among these that still includes Running Shoes? Options: [Running Shoes, Athletic Footwear, Footwear, Apparel].",
+        "answer": "Apparel",
+        "task_type": "Transitive reasoning-hierarchy"
+    },
+    {
+        "question": "In a family tree, Alan is Brian's father. Brian is Carla's father and David's father. Carla is Emma's mother. Who is Emma's grandfather? Options: [Alan, Brian, Carla, David, Emma].",
+        "answer": "Brian",
+        "task_type": "Transitive reasoning-hierarchy"
+    },
+    {
+        "question": "In a martial arts school, a black belt is above a brown belt in rank. A brown belt is above a purple belt. A purple belt is above a blue belt. A blue belt is above a white belt. Among purple, blue, and white belts, which has the highest rank? Options: [black belt, brown belt, purple belt, blue belt, white belt].",
+        "answer": "purple belt",
+        "task_type": "Transitive reasoning-hierarchy"
+    },
+    {
+        "question": "In a scouting program, Eagle Scout is above Life Scout. Life Scout is above Star Scout. Star Scout is above First Class Scout. First Class Scout is above Second Class Scout. Who is directly two levels above First Class Scout? Options: [Eagle Scout, Life Scout, Star Scout, First Class Scout, Second Class Scout].",
+        "answer": "Star Scout",
+        "task_type": "Transitive reasoning-hierarchy"
+    },
+    {
+        "question": "In a chess federation, Grandmaster is above International Master. International Master is above FIDE Master. FIDE Master is above Candidate Master. Candidate Master is above Club Player. Who holds the lowest title in this hierarchy? Options: [Grandmaster, International Master, FIDE Master, Candidate Master, Club Player].",
+        "answer": "Club Player",
+        "task_type": "Transitive reasoning-hierarchy"
+    },
+    {
+        "question": "In a school, 12th grade is above 11th grade. 11th grade is above 10th grade. 10th grade is above 9th grade. Among students in 9th, 10th, and 12th grades, who is in the highest grade level? Options: [9th grade, 10th grade, 11th grade, 12th grade].",
+        "answer": "12th grade",
+        "task_type": "Transitive reasoning-hierarchy"
+    },
+    {
+        "question": "In a tournament, the final round is above the semifinal. The semifinal is above the quarterfinal. The quarterfinal is above the group stage. The group stage is above the qualifiers. If a team is in the semifinal, which is the lowest round that must also have been reached by that team? Options: [final, semifinal, quarterfinal, group stage, qualifiers].",
+        "answer": "qualifiers",
+        "task_type": "Transitive reasoning-hierarchy"
+    },
+    {
+        "question": "In a military hierarchy, General is above Colonel. Colonel is above Major. Major is above Captain. Captain is above Lieutenant. Who is three levels above Lieutenant? Options: [General, Colonel, Major, Captain, Lieutenant].",
+        "answer": "Colonel",
+        "task_type": "Transitive reasoning-hierarchy"
+    },
+    {
+        "question": "In a file system, the file notes.txt is inside the folder MeetingNotes. The folder MeetingNotes is inside the folder Projects2025. Projects2025 is inside the folder Work. The folder Work is on the drive DataDisk. What is the most general container that still contains notes.txt? Options: [notes.txt, MeetingNotes, Projects2025, Work, DataDisk].",
+        "answer": "DataDisk",
+        "task_type": "Transitive reasoning-hierarchy"
+    },
+    {
+        "question": "In a geography hierarchy, the neighborhood Oakwood is inside the city Riverton. Riverton is in the state Glenland. Glenland is in the country Norvia. Norvia is on the continent Aridia. Which is the most general region that still includes Oakwood? Options: [Oakwood, Riverton, Glenland, Norvia, Aridia].",
+        "answer": "Aridia",
+        "task_type": "Transitive reasoning-hierarchy"
+    },
+    {
+        "question": "In a math course, the set of prime numbers less than 10 is a subset of the set of natural numbers less than 10. The set of natural numbers less than 10 is a subset of the set of natural numbers. The set of natural numbers is a subset of the set of real numbers. Which is the most general set among these that still contains all primes less than 10? Options: [primes < 10, naturals < 10, naturals, reals].",
+        "answer": "reals",
+        "task_type": "Transitive reasoning-hierarchy"
+    },
+    {
+        "question": "In biology, a house cat is a kind of domestic cat. A domestic cat is a kind of cat. A cat is a kind of mammal. A mammal is a kind of animal. Which category is just one level more general than cat in this hierarchy? Options: [house cat, domestic cat, cat, mammal, animal].",
+        "answer": "mammal",
+        "task_type": "Transitive reasoning-hierarchy"
+    },
+    {
+        "question": "In a library system, the book 'Space Travel' belongs to the shelf Science Fiction. The shelf Science Fiction belongs to the section Literature. The section Literature belongs to the main floor Books Area. The Books Area belongs to the Central Library Building. Which is the highest-level location that still contains 'Space Travel'? Options: [Science Fiction, Literature, Books Area, Central Library Building].",
+        "answer": "Central Library Building",
+        "task_type": "Transitive reasoning-hierarchy"
+    },
+    {
+        "question": "In a tagging system, 'Golden Retriever' is a subtype of 'Retriever'. 'Retriever' is a subtype of 'Dog'. 'Dog' is a subtype of 'Mammal'. 'Mammal' is a subtype of 'Animal'. Which category is the most specific category that is still more general than 'Golden Retriever'? Options: [Retriever, Dog, Mammal, Animal].",
+        "answer": "Retriever",
+        "task_type": "Transitive reasoning-hierarchy"
+    },
+    {
+        "question": "In a digital organization, a JPEG photo belongs to the album Vacation2024. The album Vacation2024 belongs to the folder Photos. The folder Photos belongs to the user account AliceProfile. The user account AliceProfile belongs to the service CloudStore. Which category is the most general one that still contains the JPEG photo? Options: [Vacation2024, Photos, AliceProfile, CloudStore].",
+        "answer": "CloudStore",
+        "task_type": "Transitive reasoning-hierarchy"
+    },
+    {
+        "question": "In a family, Anna is Ben's mother. Ben is Carla's father. Carla is Dylan's mother. Who is Dylan's grandparent? Options: [Anna, Ben, Carla, Dylan].",
+        "answer": "Anna",
+        "task_type": "Transitive reasoning-hierarchy"
+    },
+    {
+        "question": "In another family, Ethan is Fiona's father. Fiona is Grace's mother. Grace is Henry's mother. Who is the earliest ancestor of Henry mentioned here? Options: [Ethan, Fiona, Grace, Henry].",
+        "answer": "Ethan",
+        "task_type": "Transitive reasoning-hierarchy"
+    },
+    {
+        "question": "Iris is Jacob's mother. Jacob is Kelly's father. Kelly is Liam's father. Who is Liam's great-grandparent in this family? Options: [Iris, Jacob, Kelly, Liam].",
+        "answer": "Iris",
+        "task_type": "Transitive reasoning-hierarchy"
+    },
+    {
+        "question": "Maria is Noah's mother. Noah is Olivia's father. Olivia is Peter's mother. Peter is Quinn's father. Who is Quinn's grandmother? Options: [Maria, Noah, Olivia, Peter, Quinn].",
+        "answer": "Olivia",
+        "task_type": "Transitive reasoning-hierarchy"
+    },
+    {
+        "question": "Rita is Sam's mother. Sam is Tina's father. Tina is Uma's mother. Uma is Victor's mother. Who is Victor's great-grandparent among the people listed? Options: [Rita, Sam, Tina, Uma, Victor].",
+        "answer": "Sam",
+        "task_type": "Transitive reasoning-hierarchy"
+    },
+    {
+        "question": "Wendy is Xavier's mother. Xavier is Yara's father. Yara is Zoe's mother. Who is Zoe's mother's mother? Options: [Wendy, Xavier, Yara, Zoe].",
+        "answer": "Wendy",
+        "task_type": "Transitive reasoning-hierarchy"
+    }
+]

@@ -1,0 +1,102 @@
+[
+    {
+        "question": "Given variables x, y, z with: x > y, y > z. What is the relation between x and z? Options: ['>', '<', '=', 'unknown'].",
+        "answer": ">",
+        "task_type": "Transitive reasoning-symbolic inequality"
+    },
+    {
+        "question": "Suppose p, q, r, s satisfy: p > q, q > r, s < r. Based on these inequalities, what is the relation between p and s? Options: ['>', '<', '=', 'unknown'].",
+        "answer": ">",
+        "task_type": "Transitive reasoning-symbolic inequality"
+    },
+    {
+        "question": "Consider a, b, c, d with: a = b, b > c, d < c. How does a compare to d? Options: ['>', '<', '=', 'unknown'].",
+        "answer": ">",
+        "task_type": "Transitive reasoning-symbolic inequality"
+    },
+    {
+        "question": "For variables m, n, k, t, u we know: m > n, n > k, t = k, u < n. What is the relation between m and t? Options: ['>', '<', '=', 'unknown'].",
+        "answer": ">",
+        "task_type": "Transitive reasoning-symbolic inequality"
+    },
+    {
+        "question": "Let r, s, t, u, v, w satisfy: t > u, r > t, s < u, v > r, w < v. Which relation holds between v and s? Options: ['>', '<', '=', 'unknown'].",
+        "answer": ">",
+        "task_type": "Transitive reasoning-symbolic inequality"
+    },
+    {
+        "question": "Variables x1, y1, z1 satisfy: x1 < y1, y1 < z1. Overall, what is the relation between x1 and z1? Options: ['>', '<', '=', 'unknown'].",
+        "answer": "<",
+        "task_type": "Transitive reasoning-symbolic inequality"
+    },
+    {
+        "question": "Suppose p, q, r, s satisfy: p < q, q = r, s > r. What is the relation between p and s? Options: ['>', '<', '=', 'unknown'].",
+        "answer": "<",
+        "task_type": "Transitive reasoning-symbolic inequality"
+    },
+    {
+        "question": "Consider a, b, c, d, e with: a > b, c > a, d > c, e < b. Based on these inequalities, what is the relation between e and d? Options: ['>', '<', '=', 'unknown'].",
+        "answer": "<",
+        "task_type": "Transitive reasoning-symbolic inequality"
+    },
+    {
+        "question": "Let m, n, o, p satisfy: o < m, m = n, p > n. How does o compare to p? Options: ['>', '<', '=', 'unknown'].",
+        "answer": "<",
+        "task_type": "Transitive reasoning-symbolic inequality"
+    },
+    {
+        "question": "For u, v, w, x, y, z we know: y > x, x > w, v > y, u < w, z < u. What is the relation between z and v? Options: ['>', '<', '=', 'unknown'].",
+        "answer": "<",
+        "task_type": "Transitive reasoning-symbolic inequality"
+    },
+    {
+        "question": "We have a, b, c with: a = b, b = c. What is the relation between a and c? Options: ['>', '<', '=', 'unknown'].",
+        "answer": "=",
+        "task_type": "Transitive reasoning-symbolic inequality"
+    },
+    {
+        "question": "Given w, x, y, z with: w > x, x = y, z < y. What is the relation between x and y? Options: ['>', '<', '=', 'unknown'].",
+        "answer": "=",
+        "task_type": "Transitive reasoning-symbolic inequality"
+    },
+    {
+        "question": "For m, n, k, r we know: m = n, n = k, r < k. Which relation holds between m and k? Options: ['>', '<', '=', 'unknown'].",
+        "answer": "=",
+        "task_type": "Transitive reasoning-symbolic inequality"
+    },
+    {
+        "question": "Let u, v, w, x, y satisfy: u > v, v = w, x < w, y = w. According to these inequalities, what is the relation between v and y? Options: ['>', '<', '=', 'unknown'].",
+        "answer": "=",
+        "task_type": "Transitive reasoning-symbolic inequality"
+    },
+    {
+        "question": "Consider a1, b1, c1, d1, e1, f1 with: a1 > b1, b1 = c1, d1 < c1, e1 > a1, f1 = c1. What is the relation between c1 and f1? Options: ['>', '<', '=', 'unknown'].",
+        "answer": "=",
+        "task_type": "Transitive reasoning-symbolic inequality"
+    },
+    {
+        "question": "Suppose x, y, z, t satisfy: x > y, z > t. Based only on these inequalities, what is the relation between x and z? Options: ['>', '<', '=', 'unknown'].",
+        "answer": "unknown",
+        "task_type": "Transitive reasoning-symbolic inequality"
+    },
+    {
+        "question": "Given a, b, c, d with: a > b, c > d. From this information alone, what is the relation between b and c? Options: ['>', '<', '=', 'unknown'].",
+        "answer": "unknown",
+        "task_type": "Transitive reasoning-symbolic inequality"
+    },
+    {
+        "question": "Let p, q, r, s, t satisfy: p > q, r > q, s < q, t > r. Which relation between p and t is determined by these inequalities? Options: ['>', '<', '=', 'unknown'].",
+        "answer": "unknown",
+        "task_type": "Transitive reasoning-symbolic inequality"
+    },
+    {
+        "question": "For m, n, o, p, q, r we know: m > n, n > o, q > o, r < q, p > m. Based on this partial order, what is the relation between p and q? Options: ['>', '<', '=', 'unknown'].",
+        "answer": "unknown",
+        "task_type": "Transitive reasoning-symbolic inequality"
+    },
+    {
+        "question": "Consider a1, b1, c1, d1, e1 with: a1 > b1, c1 > b1, d1 < b1, e1 < c1. Using only these inequalities, what is the relation between a1 and c1? Options: ['>', '<', '=', 'unknown'].",
+        "answer": "unknown",
+        "task_type": "Transitive reasoning-symbolic inequality"
+    }
+]

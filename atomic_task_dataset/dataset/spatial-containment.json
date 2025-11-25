@@ -1,0 +1,102 @@
+[
+    {
+        "question": "Town L is north of Town M. Town N is 5 km south of Town M. Which town is the southernmost? Options: [Town L, Town M, Town N].",
+        "answer": "Town N",
+        "task_type": "Transitive reasoning-spatial containment"
+    },
+    {
+        "question": "Along a straight line of parked cars, Car 2 is 3 meters to the right of Car 1. Car 3 is 2 meters to the right of Car 2. Car 4 is 1 meter to the left of Car 1. Which car is the rightmost? Options: [Car 1, Car 2, Car 3, Car 4].",
+        "answer": "Car 3",
+        "task_type": "Transitive reasoning-spatial containment"
+    },
+    {
+        "question": "The Coin is in Box A. Box A is inside the Drawer. The Drawer is built into the Cabinet. Which location is the outermost container that still contains the Coin? Options: [Coin, Box A, Drawer, Cabinet].",
+        "answer": "Cabinet",
+        "task_type": "Transitive reasoning-spatial containment"
+    },
+    {
+        "question": "In an office building, Office X is on the 4th floor. Office Y is two floors above Office X. Office Z is one floor below Office X. Which office is on the highest floor? Options: [Office X, Office Y, Office Z].",
+        "answer": "Office Y",
+        "task_type": "Transitive reasoning-spatial containment"
+    },
+    {
+        "question": "In a hallway measured from the entrance, Table A is 4 meters from the entrance. Table B is 2 meters farther from the entrance than Table A. Table C is 1 meter closer to the entrance than Table A. Table D is exactly halfway between Table B and Table C along the hallway. Which table is closest to the entrance? Options: [Table A, Table B, Table C, Table D].",
+        "answer": "Table C",
+        "task_type": "Transitive reasoning-spatial containment"
+    },
+    {
+        "question": "On a bookshelf, Book Red is to the left of Book Blue. Book Blue is to the left of Book Green. Which book is the rightmost on the shelf? Options: [Book Red, Book Blue, Book Green].",
+        "answer": "Book Green",
+        "task_type": "Transitive reasoning-spatial containment"
+    },
+    {
+        "question": "On an east–west subway line, Station Q is 3 km east of Station P. Station R is 1 km west of Station P. Station S is 2 km east of Station Q. Which station is the easternmost? Options: [Station P, Station Q, Station R, Station S].",
+        "answer": "Station S",
+        "task_type": "Transitive reasoning-spatial containment"
+    },
+    {
+        "question": "In a bookcase, Shelf 2 is directly above Shelf 1. Shelf 3 is above Shelf 2. Shelf 4 is below Shelf 1. Which shelf is highest above the floor? Options: [Shelf 1, Shelf 2, Shelf 3, Shelf 4].",
+        "answer": "Shelf 3",
+        "task_type": "Transitive reasoning-spatial containment"
+    },
+    {
+        "question": "A Key is inside a Pouch. The Pouch is inside a Bag. The Bag is in a Locker. The Locker is inside a Storage Room. Which location is the outermost place that still contains the Key? Options: [Key, Pouch, Bag, Locker, Storage Room].",
+        "answer": "Storage Room",
+        "task_type": "Transitive reasoning-spatial containment"
+    },
+    {
+        "question": "Along a straight road in a city, Cafe B is 200 meters from the central square. Cafe A is 300 meters farther from the square than Cafe B. Cafe C is 100 meters farther from the square than Cafe A. Cafe D is exactly halfway between Cafe B and Cafe C along the road. Which cafe is farthest from the central square? Options: [Cafe A, Cafe B, Cafe C, Cafe D].",
+        "answer": "Cafe C",
+        "task_type": "Transitive reasoning-spatial containment"
+    },
+    {
+        "question": "Along a straight north–south coastline, Lighthouse K is 10 km north of Lighthouse L. Lighthouse M is 5 km south of Lighthouse L. Lighthouse N is 20 km north of Lighthouse K. Which lighthouse is the northernmost? Options: [Lighthouse K, Lighthouse L, Lighthouse M, Lighthouse N].",
+        "answer": "Lighthouse N",
+        "task_type": "Transitive reasoning-spatial containment"
+    },
+    {
+        "question": "On a straight park path measured from the entrance, Bench 1 is at 30 meters. Bench 2 is 10 meters closer to the entrance than Bench 1. Bench 3 is 5 meters farther from the entrance than Bench 1. Bench 4 is exactly halfway between Bench 2 and Bench 3 along the path. Which bench is closest to the entrance? Options: [Bench 1, Bench 2, Bench 3, Bench 4].",
+        "answer": "Bench 2",
+        "task_type": "Transitive reasoning-spatial containment"
+    },
+    {
+        "question": "On a table, Box A is inside Box B. Box B is inside Box C. Box D is outside Box C but still on the table. A marble is inside Box A. Which container is the outermost place that still contains the marble? Options: [Box A, Box B, Box C, Box D].",
+        "answer": "Box C",
+        "task_type": "Transitive reasoning-spatial containment"
+    },
+    {
+        "question": "In a parking lot along a single row, Spot X is 5 meters from the gate. Spot Y is 3 meters farther from the gate than Spot X. Spot Z is 2 meters closer to the gate than Spot X. Spot W is 1 meter farther from the gate than Spot Y. Which parking spot is farthest from the gate? Options: [Spot W, Spot X, Spot Y, Spot Z].",
+        "answer": "Spot W",
+        "task_type": "Transitive reasoning-spatial containment"
+    },
+    {
+        "question": "In a simple model, four planets orbit a star along the same line. Planet R is 50 million kilometers from the star. Planet S is 20 million kilometers closer to the star than Planet R. Planet T is 30 million kilometers farther from the star than Planet R. Planet U is halfway between Planet S and Planet T in distance from the star. Which planet is farthest from the star? Options: [Planet R, Planet S, Planet T, Planet U].",
+        "answer": "Planet T",
+        "task_type": "Transitive reasoning-spatial containment"
+    },
+    {
+        "question": "A document is stored in Folder 1. Folder 1 is inside Folder 2. Folder 2 is located inside the Projects directory. The Projects directory is stored on Drive D. Which location is the outermost place that still contains the document? Options: [the document, Folder 1, Folder 2, Projects directory, Drive D].",
+        "answer": "Drive D",
+        "task_type": "Transitive reasoning-spatial containment"
+    },
+    {
+        "question": "Along a straight north-south road, Bus Stop A is 2 km north of Bus Stop B. Bus Stop C is 1 km south of Bus Stop B. Bus Stop D is 4 km north of Bus Stop A. Which bus stop is the southernmost? Options: [Bus Stop A, Bus Stop B, Bus Stop C, Bus Stop D].",
+        "answer": "Bus Stop C",
+        "task_type": "Transitive reasoning-spatial containment"
+    },
+    {
+        "question": "In a tall dresser, Drawer 1 is above Drawer 2. Drawer 3 is above Drawer 1. Drawer 4 is below Drawer 2. Drawer 5 is below Drawer 4. Which drawer is lowest? Options: [Drawer 1, Drawer 2, Drawer 3, Drawer 4, Drawer 5].",
+        "answer": "Drawer 5",
+        "task_type": "Transitive reasoning-spatial containment"
+    },
+    {
+        "question": "In a single row of seats, Emma sits to the left of Noah. Liam sits to the right of Noah. Ava sits between Emma and Noah, but closer to Noah than to Emma. Which student is sitting rightmost in the row? Options: [Emma, Noah, Liam, Ava].",
+        "answer": "Liam",
+        "task_type": "Transitive reasoning-spatial containment"
+    },
+    {
+        "question": "A Ball is placed in Box X. Box X is inside Crate Y. Crate Y is inside Truck Z. Later, the Ball is removed from Box X and put directly into Crate Y, while Crate Y remains inside Truck Z the entire time. After this move, which location is the outermost container that still contains the Ball? Options: [Ball, Box X, Crate Y, Truck Z].",
+        "answer": "Truck Z",
+        "task_type": "Transitive reasoning-spatial containment"
+    }
+]

@@ -16,6 +16,184 @@ except ImportError:
     def tqdm(iterable, desc=None, leave=True):
         return iterable
 
+# Atomic Task Types - maps folder names to task_type in JSON
+ATOMIC_TASK_TYPES = {
+    "scalar-max": "Transitive reasoning-scalar max",
+    "symbolic-inequality": "Transitive reasoning-symbolic inequality", 
+    "temporal-order": "Transitive reasoning-temporal order",
+    "spatial-containment": "Transitive reasoning-spatial containment",
+    "subset-implication": "Transitive reasoning-subset/implication",
+    "hierarchy": "Transitive reasoning-hierarchy",
+}
+
+# Task-specific prompt templates
+ATOMIC_TASK_PROMPTS = {
+    "Transitive reasoning-scalar max": """You are an expert in transitive reasoning over scalar comparisons.
+
+Task: Given comparative statements about entities (e.g., "A is taller than B", "B is older than C"), determine which entity is the maximum or minimum (tallest, shortest, oldest, youngest, heaviest, fastest, etc.).
+
+Key reasoning skills required:
+- Build a transitive ordering from comparative adjectives (taller/shorter, older/younger, heavier/lighter, faster/slower, richer/poorer, etc.)
+- Handle interleaved comparisons (not just simple chains like A > B > C)
+- Identify the unique maximum or minimum entity from the given constraints
+
+Question:
+{question}
+
+Instructions:
+- Read all comparative statements carefully
+- Build the ordering by chaining comparisons transitively
+- Identify which entity is at the extreme (maximum or minimum) as asked
+- Your answer must be exactly one of the listed options
+
+Output format:
+[ "answer": "<your chosen option>" ]
+
+Your answer:""",
+
+    "Transitive reasoning-symbolic inequality": """You are an expert in transitive reasoning over symbolic inequalities.
+
+Task: Given symbolic inequality statements (e.g., "A > B", "B > C", "D < A"), determine the relation between two specified variables from {">", "<", "=", "unknown"}.
+
+Key reasoning skills required:
+- Chain inequalities transitively (if A > B and B > C, then A > C)
+- Handle criss-cross patterns and partially overlapping comparisons
+- Recognize when the relation is genuinely underdetermined ("unknown")
+- Handle equality cases correctly
+
+Question:
+{question}
+
+Instructions:
+- Parse all inequality statements
+- Apply transitivity to derive the relation between the queried variables
+- If the relation cannot be determined from given information, answer "unknown"
+- Your answer must be exactly one of: ">", "<", "=", "unknown"
+
+Output format:
+[ "answer": "<your chosen option>" ]
+
+Your answer:""",
+
+    "Transitive reasoning-temporal order": """You are an expert in transitive reasoning over temporal relations.
+
+Task: Given temporal relations between events (using "before"/"after", clock times, dates, or durations), determine which event happens first or last.
+
+Key reasoning skills required:
+- Parse temporal cues: "before"/"after", explicit times (9:00 AM, 3:00 PM), durations (30 minutes after), calendar references (Monday, Tuesday)
+- Build a temporal ordering from mixed cues
+- Handle interleaved temporal constraints
+- Identify the unique earliest or latest event
+
+Question:
+{question}
+
+Instructions:
+- Read all temporal relations carefully
+- Build the timeline by combining all temporal cues
+- Identify which event is earliest (for "first") or latest (for "last")
+- Your answer must be exactly one of the listed event names
+
+Output format:
+[ "answer": "<your chosen option>" ]
+
+Your answer:""",
+
+    "Transitive reasoning-spatial containment": """You are an expert in transitive reasoning over spatial relations and containment.
+
+Task: Given spatial relations (left/right, north/south, above/below, inside/outside, distances) between objects or locations, determine the extreme position or ultimate container.
+
+Key reasoning skills required:
+- Parse directional relations (north of, left of, above, closer to)
+- Handle numeric distances and coordinates
+- Trace containment chains (X is in Y, Y is in Z → X is ultimately in Z)
+- Identify the unique extreme position (leftmost, northernmost, highest, closest, outermost container)
+
+Question:
+{question}
+
+Instructions:
+- Read all spatial/containment relations
+- Build the spatial ordering or containment hierarchy
+- Identify the entity at the extreme position or the outermost container
+- Your answer must be exactly one of the listed options
+
+Output format:
+[ "answer": "<your chosen option>" ]
+
+Your answer:""",
+
+    "Transitive reasoning-subset/implication": """You are an expert in transitive reasoning over class inclusion and logical implication.
+
+Task: Given premises about categories and their relationships (e.g., "All X are Y", "No X are Y", "If X then Y"), determine whether a conclusion must be true, or select the correct conclusion.
+
+Key reasoning skills required:
+- Chain universal statements: "All X are Y" + "All Y are Z" → "All X are Z"
+- Handle negations: "All X are Y" + "No Y are Z" → "No X are Z"
+- Distinguish valid conclusions from plausible-sounding but incorrect ones
+- Recognize when a conclusion does NOT follow (missing or reversed links)
+
+Question:
+{question}
+
+Instructions:
+- Parse all premise statements about category relationships
+- Apply logical chaining to determine what must be true
+- For Yes/No questions: answer "Yes" only if the conclusion is logically entailed
+- For selection questions: choose the one statement that MUST be true
+- Your answer must be exactly "Yes", "No", or the correct conclusion sentence
+
+Output format:
+[ "answer": "<your chosen option>" ]
+
+Your answer:""",
+
+    "Transitive reasoning-hierarchy": """You are an expert in transitive reasoning over hierarchical relations.
+
+Task: Given hierarchical relations (manager/employee, parent/child, higher/lower rank, category/subcategory), determine ancestors, top-level managers, or the highest node in a hierarchy.
+
+Key reasoning skills required:
+- Chain hierarchical relations transitively (if A manages B and B manages C, then A is above C)
+- Handle organizational hierarchies (manager, supervisor, director, CEO)
+- Handle family trees (parent, grandparent, ancestor)
+- Handle category taxonomies (subtype, supertype)
+- Identify the unique answer for queries like "top-level manager", "grandparent", "highest-ranking person"
+
+Question:
+{question}
+
+Instructions:
+- Parse all hierarchical relations (manages, reports to, parent of, above in rank, etc.)
+- Build the hierarchy tree
+- Trace the path to answer queries about ancestors or top-level nodes
+- Your answer must be exactly one of the listed options
+
+Output format:
+[ "answer": "<your chosen option>" ]
+
+Your answer:"""
+}
+
+# Generic fallback prompt
+ATOMIC_TASK_PROMPT_GENERIC = """You are an expert in multi-step logical and transitive reasoning. 
+You will be given one multiple-choice question that already includes its answer options after the word "Options:". 
+Use only the information in the question and no outside knowledge.
+
+Question:
+{question}
+
+Instructions:
+- Read the question and its options carefully.
+- Treat the premises as the only ground truth; do not use any world knowledge or external facts.
+- Use precise logical and transitive reasoning over the given information to determine which single option must be correct.
+- Your chosen answer must be exactly one of the options as written in the question.
+- Do not include your reasoning or any extra text.
+
+Output format:
+[ "answer": "<your chosen option, copied verbatim from the options>" ]
+
+Your answer:"""
+
 # BLEU score for evaluation
 BLEU_AVAILABLE = False
 USE_NLTK_BLEU = False
@@ -265,6 +443,10 @@ class AblationScorer(HeadScorer):
         ablated_heads: Optional[List[Tuple[int, int]]] = None,
         debug: bool = False
     ) -> Dict[str, float]:
+        # Check if this is an atomic task (multiple-choice exact match)
+        if subtask_name in ATOMIC_TASK_TYPES.values() or subtask_name in ATOMIC_TASK_TYPES.keys():
+            return self._evaluate_atomic_task(examples, subtask_name, ablated_heads, debug)
+        
         # For CognitiveMirrors, use BLEU score instead of correctness
         use_bleu = subtask_name in ["logical_reasoning"]
         
@@ -561,6 +743,234 @@ class AblationScorer(HeadScorer):
             "correct": len(bleu_scores),
             "total": len(examples)
         }
+    
+    def _evaluate_atomic_task(
+        self,
+        examples: List[Dict[str, Any]],
+        subtask_name: str,
+        ablated_heads: Optional[List[Tuple[int, int]]] = None,
+        debug: bool = False
+    ) -> Dict[str, float]:
+        """Evaluate atomic task using exact match on multiple-choice answers."""
+        correct = 0
+        total = 0
+        all_outputs = []
+        all_extracted = []
+        
+        for example in examples:
+            try:
+                # Format example using atomic task prompt
+                input_text = self._format_atomic_task_example(example)
+                
+                # Debug: show formatted prompt for first example
+                if debug and total == 0:
+                    print(f"\n    DEBUG - Formatted prompt (first 500 chars):")
+                    print(f"      {input_text[:500]}...")
+                    if len(input_text) > 500:
+                        print(f"      ... (total length: {len(input_text)} chars)")
+                
+                input_ids = self.tokenizer.encode(input_text, return_tensors="pt").to(self.device)
+                
+                # Generate with or without ablation
+                with torch.no_grad():
+                    if ablated_heads:
+                        output = self._generate_with_ablation(input_ids, ablated_heads)
+                    else:
+                        output = self.model.generate(
+                            input_ids,
+                            max_new_tokens=100,
+                            do_sample=False,
+                            pad_token_id=self.tokenizer.eos_token_id,
+                            eos_token_id=self.tokenizer.eos_token_id,
+                            use_cache=True
+                        )
+                
+                # Decode and extract generated text
+                decoded_full = self.tokenizer.decode(output[0], skip_special_tokens=True)
+                input_length = len(input_ids[0])
+                generated_tokens = output[0][input_length:]
+                generated_text = self.tokenizer.decode(generated_tokens, skip_special_tokens=True)
+                
+                # Clean up
+                generated_text = re.sub(r'^assistant\s*\n*\s*', '', generated_text, flags=re.IGNORECASE)
+                generated_text = generated_text.strip()
+                
+                if input_text in decoded_full:
+                    generated_text_alt = decoded_full.replace(input_text, "", 1).strip()
+                    generated_text_alt = re.sub(r'^assistant\s*\n*\s*', '', generated_text_alt, flags=re.IGNORECASE)
+                    generated_text_alt = generated_text_alt.strip()
+                    if len(generated_text_alt) > len(generated_text):
+                        generated_text = generated_text_alt
+                
+                all_outputs.append(generated_text)
+                
+                # Get correct answer
+                correct_answer = example.get("answer", "")
+                
+                # Extract answer from model output
+                extracted_answer = self._extract_atomic_answer(generated_text, example)
+                all_extracted.append(extracted_answer)
+                
+                # Exact match comparison (case-insensitive, strip whitespace)
+                is_correct = self._compare_atomic_answers(extracted_answer, correct_answer)
+                if is_correct:
+                    correct += 1
+                total += 1
+                
+                # Debug output for first example
+                if debug and total == 1:
+                    print(f"\n    DEBUG - First example evaluation:")
+                    print(f"      Question: {example.get('question', '')[:150]}...")
+                    print(f"      Correct answer: '{correct_answer}'")
+                    print(f"      Generated text: '{generated_text[:200]}...'")
+                    print(f"      Extracted answer: '{extracted_answer}'")
+                    print(f"      Is correct: {is_correct}")
+                    if ablated_heads:
+                        print(f"      Ablated heads: {ablated_heads}")
+                    else:
+                        print(f"      Mode: BASELINE (no heads ablated)")
+                
+            except Exception as e:
+                if debug:
+                    print(f"    ERROR processing example: {e}")
+                continue
+        
+        accuracy = correct / total if total > 0 else 0.0
+        
+        if debug:
+            print(f"\n    Evaluation summary:")
+            print(f"      Correct: {correct}/{total}")
+            print(f"      Accuracy: {accuracy:.4f}")
+            print(f"      Sample outputs: {all_outputs[:2]}")
+            print(f"      Sample extracted: {all_extracted[:2]}")
+        
+        return {
+            "accuracy": accuracy,
+            "correct": correct,
+            "total": total
+        }
+    
+    def _format_atomic_task_example(self, example: Dict[str, Any]) -> str:
+        """Format an atomic task example using task-specific prompt template."""
+        question = example.get("question", "")
+        task_type = example.get("task_type", "")
+        
+        # Get task-specific prompt or fall back to generic
+        if task_type in ATOMIC_TASK_PROMPTS:
+            prompt = ATOMIC_TASK_PROMPTS[task_type].format(question=question)
+        else:
+            # Try to find by partial match
+            prompt = None
+            for key in ATOMIC_TASK_PROMPTS:
+                if key.lower() in task_type.lower() or task_type.lower() in key.lower():
+                    prompt = ATOMIC_TASK_PROMPTS[key].format(question=question)
+                    break
+            if prompt is None:
+                prompt = ATOMIC_TASK_PROMPT_GENERIC.format(question=question)
+        
+        # Apply chat template if available
+        if hasattr(self.tokenizer, 'apply_chat_template') and self.tokenizer.chat_template is not None:
+            messages = [
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ]
+            formatted = self.tokenizer.apply_chat_template(
+                messages,
+                add_generation_prompt=True,
+                tokenize=False
+            )
+            return formatted
+        else:
+            return prompt
+    
+    def _extract_atomic_answer(self, generated_text: str, example: Dict[str, Any]) -> str:
+        """Extract the answer from model output for atomic tasks."""
+        text = generated_text.strip()
+        
+        # Try to extract from [ "answer": "..." ] format
+        match = re.search(r'\[\s*"answer"\s*:\s*"([^"]+)"\s*\]', text, re.IGNORECASE)
+        if match:
+            return match.group(1).strip()
+        
+        # Try alternate format: [ "answer": '...' ]
+        match = re.search(r"\[\s*['\"]answer['\"]\s*:\s*['\"]([^'\"]+)['\"]\s*\]", text, re.IGNORECASE)
+        if match:
+            return match.group(1).strip()
+        
+        # Try to find answer after "answer:" or "Answer:"
+        match = re.search(r'answer\s*:\s*([^\n\[\]]+)', text, re.IGNORECASE)
+        if match:
+            answer = match.group(1).strip()
+            # Clean up quotes
+            answer = answer.strip('"\'')
+            return answer
+        
+        # Get the options from the question to match against
+        question = example.get("question", "")
+        options_match = re.search(r'Options:\s*\[([^\]]+)\]', question)
+        if options_match:
+            options_text = options_match.group(1)
+            # Parse options - handle both comma and semicolon separators
+            options = [opt.strip().strip('"\'') for opt in re.split(r'[,;]', options_text)]
+            
+            # Check if any option appears in the generated text
+            text_lower = text.lower()
+            for opt in options:
+                opt_lower = opt.lower().strip()
+                # Check for exact match or common patterns
+                if opt_lower in text_lower:
+                    return opt
+                # Check for quoted option
+                if f'"{opt}"' in text or f"'{opt}'" in text:
+                    return opt
+        
+        # Fallback: return first line or first few words
+        first_line = text.split('\n')[0].strip()
+        if len(first_line) > 0 and len(first_line) < 100:
+            return first_line.strip('"\'[]')
+        
+        return text[:50].strip('"\'[]') if text else ""
+    
+    def _compare_atomic_answers(self, extracted: str, correct: str) -> bool:
+        """Compare extracted answer with correct answer (flexible matching)."""
+        if not extracted or not correct:
+            return False
+        
+        # Normalize both answers
+        extracted_norm = extracted.lower().strip().strip('"\'')
+        correct_norm = correct.lower().strip().strip('"\'')
+        
+        # Exact match
+        if extracted_norm == correct_norm:
+            return True
+        
+        # Check if correct answer is contained in extracted (for partial matches)
+        if correct_norm in extracted_norm:
+            return True
+        
+        # For symbolic answers like ">", "<", "=", "unknown"
+        if correct_norm in ['>', '<', '=', 'unknown']:
+            # Check if the symbol appears in the extracted text
+            if correct_norm in extracted_norm:
+                return True
+            # Check for word equivalents
+            if correct_norm == '>' and any(w in extracted_norm for w in ['greater', 'more than', 'larger']):
+                return True
+            if correct_norm == '<' and any(w in extracted_norm for w in ['less', 'smaller', 'fewer']):
+                return True
+            if correct_norm == '=' and any(w in extracted_norm for w in ['equal', 'same']):
+                return True
+        
+        # For Yes/No answers
+        if correct_norm in ['yes', 'no']:
+            if correct_norm == 'yes' and any(w in extracted_norm for w in ['yes', 'true', 'correct', 'necessarily true']):
+                return True
+            if correct_norm == 'no' and any(w in extracted_norm for w in ['no', 'false', 'incorrect', 'not necessarily']):
+                return True
+        
+        return False
         
     def _generate_with_ablation(
         self,
@@ -641,8 +1051,12 @@ class AblationScorer(HeadScorer):
         """
         Format example for model input.
         
-        Supports both backward-chaining and CognitiveMirrors formats.
+        Supports backward-chaining, CognitiveMirrors, and atomic task formats.
         """
+        # Check if this is an atomic task example (has task_type field)
+        if "task_type" in example and example["task_type"] in ATOMIC_TASK_TYPES.values():
+            return self._format_atomic_task_example(example)
+        
         # Check if this is a CognitiveMirrors example
         if "subquestion" in example or ("question" in example and "subquestion_answer" in example):
             return self._format_cognitive_mirrors_example(example)
