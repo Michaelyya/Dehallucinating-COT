@@ -65,15 +65,35 @@ class BaseModel(ABC):
                 trust_remote_code=True,
             ).eval()
             self.attn_mode = "flash"
-        elif "qwen2" in model_configs.name.lower():
-            self.model = Qwen2ForCausalLM.from_pretrained(
+        elif "qwen2" in model_configs.name.lower() or "qwen3" in model_configs.name.lower() or "qwen" in model_configs.name.lower():
+            # Handle Qwen2, Qwen3, and other Qwen variants
+            try:
+                self.model = Qwen2ForCausalLM.from_pretrained(
+                    model_configs.configs.model_name_or_path,
+                    use_flash_attention_2="flash_attention_2",
+                    attn_implementation="flash_attention_2",
+                    torch_dtype="auto",
+                    device_map="auto",
+                ).eval()
+                self.attn_mode = "flash"
+                print(f"[INIT] Model '{model_configs.name}' initialized with attention mode: flash")
+            except Exception as e:
+                print(f"[INIT] Flash attention failed for Qwen: {e}, falling back to eager attention")
+                self.model = Qwen2ForCausalLM.from_pretrained(
+                    model_configs.configs.model_name_or_path,
+                    torch_dtype="auto",
+                    device_map="auto",
+                ).eval()
+                self.attn_mode = "torch"
+        else:
+            # Fallback: try to load with AutoModelForCausalLM
+            print(f"[INIT] Unknown model type '{model_configs.name}', attempting AutoModelForCausalLM")
+            self.model = AutoModelForCausalLM.from_pretrained(
                 model_configs.configs.model_name_or_path,
-                use_flash_attention_2="flash_attention_2",
-                attn_implementation="flash_attention_2",
                 torch_dtype="auto",
                 device_map="auto",
             ).eval()
-            self.attn_mode = "flash"
+            self.attn_mode = "torch"
 
         self.tokenizer = AutoTokenizer.from_pretrained(
             model_configs.configs.model_name_or_path
