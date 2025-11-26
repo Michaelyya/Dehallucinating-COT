@@ -857,16 +857,34 @@ class AblationScorer(HeadScorer):
         question = example.get("question", "")
         task_type = example.get("task_type", "")
         
+        # Safety check: if task_type is missing or invalid, try to detect from question
+        if not task_type or task_type not in ATOMIC_TASK_PROMPTS:
+            # Try to detect task type from question content
+            q_lower = question.lower()
+            if any(x in q_lower for x in ['taller', 'shorter', 'older', 'younger', 'heavier', 'fastest', 'tallest']):
+                task_type = "Transitive reasoning-scalar max"
+            elif 'options:' in q_lower and ("'>'," in question or "'<'," in question or '">", "<"' in question):
+                task_type = "Transitive reasoning-symbolic inequality"
+            elif any(x in q_lower for x in ['before', 'after', 'first', 'last', 'happens']):
+                task_type = "Transitive reasoning-temporal order"
+            elif any(x in q_lower for x in ['north', 'south', 'left', 'right', 'inside', 'above', 'below']):
+                task_type = "Transitive reasoning-spatial containment"
+            elif any(x in q_lower for x in ['all ', 'every ', 'if someone', 'no ', 'must be true']):
+                task_type = "Transitive reasoning-subset/implication"
+            elif any(x in q_lower for x in ['manages', 'reports to', 'supervisor', 'parent', 'ancestor', 'hierarchy']):
+                task_type = "Transitive reasoning-hierarchy"
+        
         # Get task-specific prompt or fall back to generic
         if task_type in ATOMIC_TASK_PROMPTS:
             prompt = ATOMIC_TASK_PROMPTS[task_type].format(question=question)
         else:
-            # Try to find by partial match
+            # Try to find by partial match (only if task_type is non-empty)
             prompt = None
-            for key in ATOMIC_TASK_PROMPTS:
-                if key.lower() in task_type.lower() or task_type.lower() in key.lower():
-                    prompt = ATOMIC_TASK_PROMPTS[key].format(question=question)
-                    break
+            if task_type:
+                for key in ATOMIC_TASK_PROMPTS:
+                    if key.lower() in task_type.lower() or task_type.lower() in key.lower():
+                        prompt = ATOMIC_TASK_PROMPTS[key].format(question=question)
+                        break
             if prompt is None:
                 prompt = ATOMIC_TASK_PROMPT_GENERIC.format(question=question)
         
