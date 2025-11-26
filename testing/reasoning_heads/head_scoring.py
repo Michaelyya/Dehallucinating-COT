@@ -832,7 +832,9 @@ class AblationScorer(HeadScorer):
                 
             except Exception as e:
                 if debug:
+                    import traceback
                     print(f"    ERROR processing example: {e}")
+                    traceback.print_exc()
                 continue
         
         accuracy = correct / total if total > 0 else 0.0
@@ -899,32 +901,73 @@ class AblationScorer(HeadScorer):
         if match:
             return match.group(1).strip()
         
+        # Try JSON-like format: { "answer": "..." }
+        match = re.search(r'\{\s*"answer"\s*:\s*"([^"]+)"\s*\}', text, re.IGNORECASE)
+        if match:
+            return match.group(1).strip()
+        
         # Try to find answer after "answer:" or "Answer:"
-        match = re.search(r'answer\s*:\s*([^\n\[\]]+)', text, re.IGNORECASE)
+        match = re.search(r'answer\s*:\s*"?([^\n\[\]"]+)"?', text, re.IGNORECASE)
         if match:
             answer = match.group(1).strip()
             # Clean up quotes
             answer = answer.strip('"\'')
             return answer
         
+        # For symbolic inequality - look for standalone symbols
+        task_type = example.get("task_type", "")
+        if "symbolic" in task_type.lower() or "inequality" in task_type.lower():
+            # Check for symbols at start of text or after common patterns
+            for symbol in ['>', '<', '=', 'unknown']:
+                # Check various patterns
+                if text.strip() == symbol:
+                    return symbol
+                if text.startswith(f'"{symbol}"') or text.startswith(f"'{symbol}'"):
+                    return symbol
+                if f'"{symbol}"' in text or f"'{symbol}'" in text:
+                    return symbol
+                # Check for symbol followed by punctuation or whitespace
+                if re.search(rf'(?:^|[\s\[\("])({re.escape(symbol)})(?:[\s\]\)"\',.]|$)', text):
+                    return symbol
+        
         # Get the options from the question to match against
         question = example.get("question", "")
         options_match = re.search(r'Options:\s*\[([^\]]+)\]', question)
         if options_match:
             options_text = options_match.group(1)
-            # Parse options - handle both comma and semicolon separators
-            options = [opt.strip().strip('"\'') for opt in re.split(r'[,;]', options_text)]
+            # Parse options - handle various quote formats
+            # Pattern: 'option', "option", or just option
+            options = []
+            # Try to find quoted options first (both single and double quotes)
+            quoted_opts = re.findall(r"['\"]([^'\"]+)['\"]", options_text)
+            if quoted_opts:
+                options = quoted_opts
+            else:
+                # Fallback: split by comma and strip
+                options = [opt.strip().strip('"\'') for opt in options_text.split(',')]
+            
+            # Clean up options
+            options = [opt.strip() for opt in options if opt.strip()]
             
             # Check if any option appears in the generated text
             text_lower = text.lower()
             for opt in options:
-                opt_lower = opt.lower().strip()
-                # Check for exact match or common patterns
-                if opt_lower in text_lower:
-                    return opt
+                opt_clean = opt.strip()
+                opt_lower = opt_clean.lower()
+                # Check for exact match
+                if opt_lower == text_lower.strip():
+                    return opt_clean
                 # Check for quoted option
-                if f'"{opt}"' in text or f"'{opt}'" in text:
-                    return opt
+                if f'"{opt_clean}"' in text or f"'{opt_clean}'" in text:
+                    return opt_clean
+                # For short options (like >, <, =), check if they appear standalone
+                if len(opt_clean) <= 10:
+                    # For symbolic options, be more careful
+                    if opt_clean in ['>', '<', '=', 'unknown']:
+                        # Already handled above in the symbolic section
+                        pass
+                    elif opt_lower in text_lower:
+                        return opt_clean
         
         # Fallback: return first line or first few words
         first_line = text.split('\n')[0].strip()
