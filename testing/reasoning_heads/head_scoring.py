@@ -444,7 +444,11 @@ class AblationScorer(HeadScorer):
         debug: bool = False
     ) -> Dict[str, float]:
         # Check if this is an atomic task (multiple-choice exact match)
-        if subtask_name in ATOMIC_TASK_TYPES.values() or subtask_name in ATOMIC_TASK_TYPES.keys():
+        is_atomic_task = (subtask_name in ATOMIC_TASK_TYPES.values() or 
+                         subtask_name in ATOMIC_TASK_TYPES.keys())
+        if is_atomic_task:
+            if debug:
+                print(f"    Using atomic task evaluation (exact match accuracy) for: {subtask_name}")
             return self._evaluate_atomic_task(examples, subtask_name, ablated_heads, debug)
         
         # For CognitiveMirrors, use BLEU score instead of correctness
@@ -760,7 +764,8 @@ class AblationScorer(HeadScorer):
         for example in examples:
             try:
                 # Format example using atomic task prompt
-                input_text = self._format_atomic_task_example(example)
+                # Use subtask_name (correct task type) instead of example's task_type field
+                input_text = self._format_atomic_task_example(example, task_type=subtask_name)
                 
                 # Debug: show formatted prompt for first example
                 if debug and total == 0:
@@ -852,10 +857,22 @@ class AblationScorer(HeadScorer):
             "total": total
         }
     
-    def _format_atomic_task_example(self, example: Dict[str, Any]) -> str:
+    def _format_atomic_task_example(self, example: Dict[str, Any], task_type: Optional[str] = None) -> str:
         """Format an atomic task example using task-specific prompt template."""
         question = example.get("question", "")
-        task_type = example.get("task_type", "")
+        
+        # Use provided task_type if available, otherwise try from example
+        if task_type is None:
+            task_type = example.get("task_type", "")
+        
+        # Validate task_type - skip if it looks like options string (e.g., '">", "<", "=", "unknown"')
+        # Options strings are typically short and contain only symbols/quotes
+        if task_type and task_type not in ATOMIC_TASK_PROMPTS:
+            # Check if it looks like an options list (short, contains quotes/symbols, no "reasoning" keyword)
+            if (len(task_type) < 30 and 
+                ('"' in task_type or "'" in task_type or task_type.startswith('[')) and
+                'reasoning' not in task_type.lower()):
+                task_type = ""  # Reset to empty, will detect from question
         
         # Safety check: if task_type is missing or invalid, try to detect from question
         if not task_type or task_type not in ATOMIC_TASK_PROMPTS:
@@ -1115,8 +1132,10 @@ class AblationScorer(HeadScorer):
         Supports backward-chaining, CognitiveMirrors, and atomic task formats.
         """
         # Check if this is an atomic task example (has task_type field)
-        if "task_type" in example and example["task_type"] in ATOMIC_TASK_TYPES.values():
-            return self._format_atomic_task_example(example)
+        # Validate task_type is actually a valid atomic task type (not corrupted data)
+        example_task_type = example.get("task_type", "")
+        if example_task_type and example_task_type in ATOMIC_TASK_TYPES.values():
+            return self._format_atomic_task_example(example, task_type=example_task_type)
         
         # Check if this is a CognitiveMirrors example
         if "subquestion" in example or ("question" in example and "subquestion_answer" in example):

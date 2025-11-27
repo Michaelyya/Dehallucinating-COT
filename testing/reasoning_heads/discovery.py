@@ -22,7 +22,7 @@ except ImportError:
         parse_backward_chaining_example as parse_example
     )
     USE_COGNITIVE_MIRRORS = False
-from .head_scoring import HeadScorer, HeadScore, create_scorer, ATOMIC_TASK_TYPES
+from .head_scoring import HeadScorer, HeadScore, create_scorer
 
 
 @dataclass
@@ -108,128 +108,6 @@ class ReasoningHeadDiscovery:
         # Discover subtasks
         self.subtasks = discover_subtasks(backward_chaining_dir)
         print(f"Discovered {len(self.subtasks)} subtasks")
-        
-        # Atomic task dataset directory (relative to project root)
-        self.atomic_dataset_dir = os.path.join(
-            os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
-            "atomic_task_dataset", "dataset"
-        )
-    
-    def load_atomic_task_dataset(
-        self, 
-        task_name: str, 
-        n_examples: Optional[int] = None
-    ) -> List[Dict[str, Any]]:
-        """Load examples from an atomic task dataset."""
-        filename_map = {
-            "scalar-max": "scalar-max.json",
-            "symbolic-inequality": "symbolic-inequality.json",
-            "temporal-order": "temporal-order.json",
-            "spatial-containment": "spatial-containment.json",
-            "subset-implication": "subset-implication.json",
-            "hierarchy": "hierarchy.json",
-        }
-        
-        if task_name not in filename_map:
-            raise ValueError(f"Unknown atomic task: {task_name}. Available: {list(filename_map.keys())}")
-        
-        filepath = os.path.join(self.atomic_dataset_dir, filename_map[task_name])
-        
-        if not os.path.exists(filepath):
-            raise FileNotFoundError(f"Atomic task dataset not found: {filepath}")
-        
-        with open(filepath, 'r') as f:
-            data = json.load(f)
-        
-        print(f"Loaded {len(data)} examples from {filepath}")
-        
-        if n_examples and n_examples < len(data):
-            data = data[:n_examples]
-            print(f"Using first {n_examples} examples")
-        
-        return data
-    
-    def discover_atomic_task_heads(
-        self,
-        task_name: str,
-        n_examples: int = 20,
-        top_k: int = 20,
-        min_score: float = 0.0
-    ) -> List[ReasoningHead]:
-        """Discover heads for a specific atomic task."""
-        print(f"\n{'='*60}")
-        print(f"Discovering heads for atomic task: {task_name}")
-        print(f"{'='*60}")
-        
-        # Load dataset
-        examples = self.load_atomic_task_dataset(task_name, n_examples)
-        
-        if len(examples) == 0:
-            print(f"No examples found for task {task_name}")
-            return []
-        
-        # Get task type for evaluation
-        task_type = ATOMIC_TASK_TYPES.get(task_name, task_name)
-        
-        print(f"Task type: {task_type}")
-        print(f"Using {len(examples)} examples")
-        print(f"Example: {examples[0].get('question', '')[:100]}...")
-        
-        # Score all heads
-        print(f"\nScoring heads...")
-        head_scores = self.scorer.score_all_heads(examples, task_type)
-        
-        # Filter and sort
-        positive_scores = [s for s in head_scores if s.score >= min_score]
-        positive_scores.sort(key=lambda x: x.score, reverse=True)
-        
-        print(f"\nResults:")
-        print(f"  Total heads scored: {len(head_scores)}")
-        print(f"  Heads with score >= {min_score}: {len(positive_scores)}")
-        if positive_scores:
-            print(f"  Top 5 heads:")
-            for i, s in enumerate(positive_scores[:5]):
-                print(f"    {i+1}. Layer {s.layer}, Head {s.head}: score={s.score:.4f}")
-        
-        # Convert to ReasoningHead format
-        reasoning_heads = [
-            ReasoningHead(
-                layer=s.layer,
-                head=s.head,
-                subtask=task_name,
-                score=s.score,
-                confidence=s.confidence,
-                method=s.method,
-                metadata=s.metadata
-            )
-            for s in positive_scores[:top_k]
-        ]
-        
-        return reasoning_heads
-    
-    def discover_all_atomic_task_heads(
-        self,
-        n_examples: int = 20,
-        top_k_per_task: int = 20,
-        min_score: float = 0.0
-    ) -> Dict[str, List[ReasoningHead]]:
-        """Discover heads for all atomic tasks."""
-        all_heads = {}
-        
-        for task_name in ATOMIC_TASK_TYPES.keys():
-            try:
-                heads = self.discover_atomic_task_heads(
-                    task_name=task_name,
-                    n_examples=n_examples,
-                    top_k=top_k_per_task,
-                    min_score=min_score
-                )
-                all_heads[task_name] = heads
-            except Exception as e:
-                print(f"Error processing task {task_name}: {e}")
-                all_heads[task_name] = []
-        
-        return all_heads
     
     def discover_heads(
         self,
