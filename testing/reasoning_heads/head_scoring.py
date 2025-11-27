@@ -267,7 +267,6 @@ except ImportError:
         BLEU_AVAILABLE = True
         USE_NLTK_BLEU = False
         USE_EVALUATE_LIB = False
-        print("Note: Using simple BLEU implementation. For better accuracy, install nltk: pip install nltk")
 
 
 @dataclass
@@ -324,15 +323,11 @@ class HeadScorer(ABC):
             max_heads_per_layer = min(n_heads, 8)  # Limit to first 8 heads per layer
         
         total_heads = max_layers * max_heads_per_layer
-        print(f"  Scoring {total_heads} heads ({max_layers} layers × {max_heads_per_layer} heads per layer)")
         
-        # Calculate baseline ONCE for all heads (more efficient and ensures consistency)
-        print(f"  Calculating baseline performance (no heads ablated)...")
         baseline_metrics = self._evaluate_subtask(
             examples, subtask_name, ablated_heads=None, debug=False
         )
         baseline_acc = baseline_metrics.get("accuracy", 0)
-        print(f"  Baseline BLEU: {baseline_acc:.4f}")
         
         scores = []
         from tqdm import tqdm
@@ -353,12 +348,9 @@ class HeadScorer(ABC):
                     scores.append(score)
                     first_head = False  # Turn off after first
                 except Exception as e:
-                    print(f"\n  Warning: Could not score layer {layer}, head {head}: {e}")
                     continue
         
-        # Sort by score descending
         scores.sort(key=lambda x: x.score, reverse=True)
-        print(f"  Completed scoring {len(scores)} heads")
         return scores
 
 
@@ -392,11 +384,6 @@ class AblationScorer(HeadScorer):
             # Use provided baseline (calculated once for all heads)
             baseline_acc = baseline_acc
         
-        # Get performance with head ablated (also debug if in debug mode)
-        # IMPORTANT: Make sure we're actually ablating the specific head
-        if debug:
-            print(f"\n    Ablating Layer {layer}, Head {head}...")
-        
         ablated_metrics = self._evaluate_subtask(
             scoring_examples, subtask_name, ablated_heads=[(layer, head)], debug=debug
         )
@@ -413,15 +400,7 @@ class AblationScorer(HeadScorer):
         # Note: We keep negative scores as-is, but for reasoning head selection,
         # we focus on positive scores (heads that decrease performance when masked)
         
-        # Confidence based on number of examples and consistency
         confidence = min(len(scoring_examples) / 10.0, 1.0)
-        
-        if debug:
-            print(f"\n    Head scoring (Layer {layer}, Head {head}):")
-            print(f"      Baseline accuracy: {baseline_acc:.4f}")
-            print(f"      Ablated accuracy: {ablated_acc:.4f}")
-            print(f"      Score: {score:.4f}")
-            print(f"      Ablated heads used: [(layer={layer}, head={head})]")
         
         return HeadScore(
             layer=layer,
@@ -447,8 +426,6 @@ class AblationScorer(HeadScorer):
         is_atomic_task = (subtask_name in ATOMIC_TASK_TYPES.values() or 
                          subtask_name in ATOMIC_TASK_TYPES.keys())
         if is_atomic_task:
-            if debug:
-                print(f"    Using atomic task evaluation (exact match accuracy) for: {subtask_name}")
             return self._evaluate_atomic_task(examples, subtask_name, ablated_heads, debug)
         
         # For CognitiveMirrors, use BLEU score instead of correctness
@@ -464,16 +441,7 @@ class AblationScorer(HeadScorer):
         
         for example in examples:
             try:
-                # Convert example to input format
                 input_text = self._format_example(example)
-                
-                # Debug: show formatted prompt for first example
-                if debug and total == 0:
-                    print(f"\n    DEBUG - Formatted prompt (first 500 chars):")
-                    print(f"      {input_text[:500]}...")
-                    if len(input_text) > 500:
-                        print(f"      ... (total length: {len(input_text)} chars)")
-                
                 input_ids = self.tokenizer.encode(input_text, return_tensors="pt").to(self.device)
                 
                 # Generate with or without ablation
@@ -522,69 +490,15 @@ class AblationScorer(HeadScorer):
                 
                 all_outputs.append(generated_text)  # Store only generated part
                 
-                # Evaluate correctness using only the generated part
                 is_correct = self._check_correctness(example, generated_text, subtask_name, is_decoded=True)
                 if is_correct:
                     correct += 1
                 total += 1
-                
-                # Debug output for first example
-                if debug and total == 1:
-                    expected_path = example.get('path', [])
-                    expected_path_str = ">".join([str(p) for p in expected_path])
-                    print(f"\n    DEBUG - First example evaluation:")
-                    print(f"      Input: {input_text}")
-                    print(f"      Expected path: {expected_path_str}")
-                    print(f"      Full model output: {decoded_full}")
-                    print(f"      Generated part only: '{generated_text}'")
-                    print(f"      Generated length: {len(generated_text)} chars")
-                    print(f"      Full path in generated? {expected_path_str in generated_text}")
-                    if len(expected_path) >= 7:
-                        path_7 = ">".join([str(p) for p in expected_path[:7]])
-                        print(f"      First 7 nodes ({path_7}) in generated? {path_7 in generated_text}")
-                    if len(expected_path) >= 5:
-                        path_5 = ">".join([str(p) for p in expected_path[:5]])
-                        print(f"      First 5 nodes ({path_5}) in generated? {path_5 in generated_text}")
-                    # Check what sequences FROM THE START are found
-                    found_sequences_from_start = []
-                    for seq_len in range(5, min(10, len(expected_path) + 1)):
-                        seq = expected_path[0:seq_len]  # Always from start
-                        seq_str = ">".join([str(p) for p in seq])
-                        if seq_str in generated_text:
-                            found_sequences_from_start.append(seq_str)
-                    if found_sequences_from_start:
-                        print(f"      Found sequences FROM START: {found_sequences_from_start}")
-                    else:
-                        print(f"      Found sequences FROM START: NONE")
-                        # Also check what random sequences might be found (for debugging)
-                        random_sequences = []
-                        for seq_len in range(3, 6):
-                            for start_idx in range(1, len(expected_path) - seq_len + 1):  # Not from start
-                                seq = expected_path[start_idx:start_idx + seq_len]
-                                seq_str = ">".join([str(p) for p in seq])
-                                if seq_str in generated_text:
-                                    random_sequences.append(seq_str)
-                        if random_sequences:
-                            print(f"      Found random subsequences (NOT from start): {random_sequences[:3]}")
-                    print(f"      Correct: {is_correct}")
-                    if ablated_heads:
-                        print(f"      Ablated heads: {ablated_heads}")
-                    else:
-                        print(f"      Mode: BASELINE (no heads ablated)")
                     
             except Exception as e:
-                # Skip examples that fail
-                if debug:
-                    print(f"    ERROR processing example: {e}")
                 continue
         
         accuracy = correct / total if total > 0 else 0.0
-        
-        if debug:
-            print(f"\n    Evaluation summary:")
-            print(f"      Correct: {correct}/{total}")
-            print(f"      Accuracy: {accuracy:.4f}")
-            print(f"      Sample outputs: {all_outputs[:2]}")
         
         return {
             "accuracy": accuracy,
@@ -599,8 +513,6 @@ class AblationScorer(HeadScorer):
         ablated_heads: Optional[List[Tuple[int, int]]] = None,
         debug: bool = False
     ) -> Dict[str, float]:
-        """Evaluate using BLEU score for free-form text generation."""
-        # BLEU_AVAILABLE should always be True now (we have fallback)
         
         bleu_scores = []
         all_outputs = []
@@ -608,16 +520,7 @@ class AblationScorer(HeadScorer):
         
         for example in examples:
             try:
-                # Convert example to input format
                 input_text = self._format_example(example)
-                
-                # Debug: show formatted prompt for first example
-                if debug and len(bleu_scores) == 0:
-                    print(f"\n    DEBUG - Formatted prompt (first 500 chars):")
-                    print(f"      {input_text[:500]}...")
-                    if len(input_text) > 500:
-                        print(f"      ... (total length: {len(input_text)} chars)")
-                
                 input_ids = self.tokenizer.encode(input_text, return_tensors="pt").to(self.device)
                 
                 # Generate with or without ablation
@@ -713,33 +616,10 @@ class AblationScorer(HeadScorer):
                 
                 bleu_scores.append(bleu)
                 
-                # Debug output for first example
-                if debug and len(bleu_scores) == 1:
-                    print(f"\n    DEBUG - First example evaluation:")
-                    print(f"      Input: {input_text[:200]}...")
-                    print(f"      Reference (full): {reference_full}")
-                    print(f"      Reference (simplified): {reference_simplified}")
-                    print(f"      Generated (full): {generated_text[:200]}...")
-                    print(f"      Generated (simplified): {generated_simplified}")
-                    print(f"      Exact match (Yes/No): {generated_simplified.lower() == reference_simplified.lower() if reference_simplified in ['yes', 'no', 'unanswerable'] else 'N/A'}")
-                    print(f"      BLEU score: {bleu:.4f}")
-                    if ablated_heads:
-                        print(f"      Ablated heads: {ablated_heads}")
-                    else:
-                        print(f"      Mode: BASELINE (no heads ablated)")
-                
             except Exception as e:
-                if debug:
-                    print(f"    ERROR processing example: {e}")
                 continue
         
         avg_bleu = np.mean(bleu_scores) if bleu_scores else 0.0
-        
-        if debug:
-            print(f"\n    Evaluation summary:")
-            print(f"      Average BLEU: {avg_bleu:.4f}")
-            print(f"      BLEU scores: {bleu_scores[:5]}")
-            print(f"      Sample outputs: {all_outputs[:2]}")
         
         return {
             "accuracy": avg_bleu,  # Use BLEU as "accuracy" metric
@@ -755,7 +635,6 @@ class AblationScorer(HeadScorer):
         ablated_heads: Optional[List[Tuple[int, int]]] = None,
         debug: bool = False
     ) -> Dict[str, float]:
-        """Evaluate atomic task using exact match on multiple-choice answers."""
         correct = 0
         total = 0
         all_outputs = []
@@ -763,17 +642,7 @@ class AblationScorer(HeadScorer):
         
         for example in examples:
             try:
-                # Format example using atomic task prompt
-                # Use subtask_name (correct task type) instead of example's task_type field
                 input_text = self._format_atomic_task_example(example, task_type=subtask_name)
-                
-                # Debug: show formatted prompt for first example
-                if debug and total == 0:
-                    print(f"\n    DEBUG - Formatted prompt (first 500 chars):")
-                    print(f"      {input_text[:500]}...")
-                    if len(input_text) > 500:
-                        print(f"      ... (total length: {len(input_text)} chars)")
-                
                 input_ids = self.tokenizer.encode(input_text, return_tensors="pt").to(self.device)
                 
                 # Generate with or without ablation
@@ -816,40 +685,15 @@ class AblationScorer(HeadScorer):
                 extracted_answer = self._extract_atomic_answer(generated_text, example)
                 all_extracted.append(extracted_answer)
                 
-                # Exact match comparison (case-insensitive, strip whitespace)
                 is_correct = self._compare_atomic_answers(extracted_answer, correct_answer)
                 if is_correct:
                     correct += 1
                 total += 1
                 
-                # Debug output for first example
-                if debug and total == 1:
-                    print(f"\n    DEBUG - First example evaluation:")
-                    print(f"      Question: {example.get('question', '')[:150]}...")
-                    print(f"      Correct answer: '{correct_answer}'")
-                    print(f"      Generated text: '{generated_text[:200]}...'")
-                    print(f"      Extracted answer: '{extracted_answer}'")
-                    print(f"      Is correct: {is_correct}")
-                    if ablated_heads:
-                        print(f"      Ablated heads: {ablated_heads}")
-                    else:
-                        print(f"      Mode: BASELINE (no heads ablated)")
-                
             except Exception as e:
-                if debug:
-                    import traceback
-                    print(f"    ERROR processing example: {e}")
-                    traceback.print_exc()
                 continue
         
         accuracy = correct / total if total > 0 else 0.0
-        
-        if debug:
-            print(f"\n    Evaluation summary:")
-            print(f"      Correct: {correct}/{total}")
-            print(f"      Accuracy: {accuracy:.4f}")
-            print(f"      Sample outputs: {all_outputs[:2]}")
-            print(f"      Sample extracted: {all_extracted[:2]}")
         
         return {
             "accuracy": accuracy,
@@ -858,13 +702,13 @@ class AblationScorer(HeadScorer):
         }
     
     def _format_atomic_task_example(self, example: Dict[str, Any], task_type: Optional[str] = None) -> str:
-        """Format an atomic task example using task-specific prompt template."""
         question = example.get("question", "")
-        example_task_type_field = example.get("task_type", "")
         
-        print(f"DEBUG START _format_atomic_task_example: param task_type='{task_type}', example['task_type']='{example_task_type_field}'")
-        
-        # IMMEDIATE VALIDATION: If task_type looks corrupted (options string), reset it
+        if task_type and task_type not in ATOMIC_TASK_PROMPTS:
+            if (len(task_type) < 50 and 
+                ('"' in task_type or "'" in task_type or task_type.startswith('[')) and
+                'reasoning' not in task_type.lower()):
+                task_type = None
         if task_type and task_type not in ATOMIC_TASK_PROMPTS:
             # Check if it looks like an options string (corrupted data)
             if (len(task_type) < 50 and 
@@ -920,28 +764,20 @@ class AblationScorer(HeadScorer):
             elif any(x in q_lower for x in ['manages', 'reports to', 'supervisor', 'parent', 'ancestor', 'hierarchy']):
                 task_type = "Transitive reasoning-hierarchy"
         
-        # Final safety check: ensure task_type is valid before using
-        # CRITICAL: Never access ATOMIC_TASK_PROMPTS without checking membership first
-        print(f"DEBUG _format_atomic_task_example: task_type='{task_type}', in ATOMIC_TASK_PROMPTS={task_type in ATOMIC_TASK_PROMPTS if task_type else False}")
         if task_type not in ATOMIC_TASK_PROMPTS:
-            # Try to find by partial match as last resort
             prompt = None
             if task_type:
                 for key in ATOMIC_TASK_PROMPTS:
                     if key.lower() in task_type.lower() or task_type.lower() in key.lower():
                         prompt = ATOMIC_TASK_PROMPTS[key].format(question=question)
                         break
-            # If still no match, use generic prompt
             if prompt is None:
                 import warnings
                 warnings.warn(f"Invalid task_type '{task_type}' not in ATOMIC_TASK_PROMPTS. Using generic prompt.")
                 prompt = ATOMIC_TASK_PROMPT_GENERIC.format(question=question)
         else:
-            # Get task-specific prompt - use .get() for extra safety
-            print(f"DEBUG before ATOMIC_TASK_PROMPTS access: task_type='{task_type}', type={type(task_type)}, in dict={task_type in ATOMIC_TASK_PROMPTS}")
             prompt_template = ATOMIC_TASK_PROMPTS.get(task_type)
             if prompt_template is None:
-                # This should never happen if check passed, but be defensive
                 import warnings
                 warnings.warn(f"task_type '{task_type}' passed check but not found in dict. Using generic prompt.")
                 prompt = ATOMIC_TASK_PROMPT_GENERIC.format(question=question)
@@ -966,7 +802,6 @@ class AblationScorer(HeadScorer):
             return prompt
     
     def _extract_atomic_answer(self, generated_text: str, example: Dict[str, Any]) -> str:
-        """Extract the answer from model output for atomic tasks."""
         text = generated_text.strip()
         
         # Try to extract from [ "answer": "..." ] format
@@ -1055,7 +890,6 @@ class AblationScorer(HeadScorer):
         return text[:50].strip('"\'[]') if text else ""
     
     def _compare_atomic_answers(self, extracted: str, correct: str) -> bool:
-        """Compare extracted answer with correct answer (flexible matching)."""
         if not extracted or not correct:
             return False
         
@@ -1098,9 +932,6 @@ class AblationScorer(HeadScorer):
         input_ids: torch.Tensor,
         ablated_heads: List[Tuple[int, int]]
     ) -> torch.Tensor:
-        """Generate with specific heads ablated using hooks."""
-        
-        # Store original attention weights
         hooks = []
         
         def create_hook(layer_idx, head_idx):
@@ -1169,12 +1000,6 @@ class AblationScorer(HeadScorer):
        
     
     def _format_example(self, example: Dict[str, Any]) -> str:
-        """
-        Format example for model input.
-        
-        Supports backward-chaining, CognitiveMirrors, and atomic task formats.
-        """
-        # Check if this is an atomic task example (has task_type field)
         # Validate task_type is actually a valid atomic task type (not corrupted data)
         example_task_type = example.get("task_type", "")
         if example_task_type and example_task_type in ATOMIC_TASK_TYPES.values():
@@ -1238,10 +1063,6 @@ class AblationScorer(HeadScorer):
         return str(example)
     
     def _extract_simplified_answer(self, answer_text: str) -> str:
-        """
-        Extract simplified answer from full answer text.
-        Returns: "yes", "no", or "unanswerable"
-        """
         answer_lower = answer_text.lower().strip()
         
         # Check for "no" patterns
@@ -1297,7 +1118,6 @@ class AblationScorer(HeadScorer):
         return answer_text
     
     def _format_cognitive_mirrors_example(self, example: Dict[str, Any]) -> str:
-        """Format CognitiveMirrors example for model input using the specified prompt format."""
         question = example.get("question", "")
         subquestion = example.get("subquestion", "")
         
@@ -1445,11 +1265,6 @@ class AblationScorer(HeadScorer):
 
 
 class CausalPatchingScorer(HeadScorer):
-    """
-    Score heads using causal attention patching.
-    
-    Replace head activations with baseline and measure effect on output.
-    """
     
     def __init__(self, model, tokenizer, device: str = "cuda"):
         super().__init__(model, tokenizer, device)
@@ -1525,9 +1340,6 @@ class CausalPatchingScorer(HeadScorer):
 
 
 class MutualInfoScorer(HeadScorer):
-    """
-    Score heads using mutual information between head activations and subtask labels.
-    """
     
     def __init__(self, model, tokenizer, device: str = "cuda"):
         super().__init__(model, tokenizer, device)
