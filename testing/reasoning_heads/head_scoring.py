@@ -861,6 +861,15 @@ class AblationScorer(HeadScorer):
         """Format an atomic task example using task-specific prompt template."""
         question = example.get("question", "")
         
+        # IMMEDIATE VALIDATION: If task_type looks corrupted (options string), reset it
+        if task_type and task_type not in ATOMIC_TASK_PROMPTS:
+            # Check if it looks like an options string (corrupted data)
+            if (len(task_type) < 50 and 
+                ('"' in task_type or "'" in task_type or task_type.startswith('[')) and
+                'reasoning' not in task_type.lower()):
+                # This is corrupted, reset to None so we detect from question
+                task_type = None
+        
         # Priority 1: Use provided task_type if it's valid
         if task_type and task_type in ATOMIC_TASK_PROMPTS:
             # Use it directly - this is the correct task type from discovery script
@@ -909,23 +918,24 @@ class AblationScorer(HeadScorer):
                 task_type = "Transitive reasoning-hierarchy"
         
         # Final safety check: ensure task_type is valid before using
+        # CRITICAL: Never access ATOMIC_TASK_PROMPTS without checking membership first
+        print(f"DEBUG _format_atomic_task_example: task_type='{task_type}', in ATOMIC_TASK_PROMPTS={task_type in ATOMIC_TASK_PROMPTS if task_type else False}")
         if task_type not in ATOMIC_TASK_PROMPTS:
-            # This should not happen if detection worked, but fallback to generic
-            import warnings
-            warnings.warn(f"Invalid task_type '{task_type}' not in ATOMIC_TASK_PROMPTS. Using generic prompt. Available keys: {list(ATOMIC_TASK_PROMPTS.keys())}")
-            prompt = ATOMIC_TASK_PROMPT_GENERIC.format(question=question)
-        else:
-            # Get task-specific prompt
-            prompt = ATOMIC_TASK_PROMPTS[task_type].format(question=question)
-            # Try to find by partial match (only if task_type is non-empty)
+            # Try to find by partial match as last resort
             prompt = None
             if task_type:
                 for key in ATOMIC_TASK_PROMPTS:
                     if key.lower() in task_type.lower() or task_type.lower() in key.lower():
                         prompt = ATOMIC_TASK_PROMPTS[key].format(question=question)
                         break
+            # If still no match, use generic prompt
             if prompt is None:
+                import warnings
+                warnings.warn(f"Invalid task_type '{task_type}' not in ATOMIC_TASK_PROMPTS. Using generic prompt.")
                 prompt = ATOMIC_TASK_PROMPT_GENERIC.format(question=question)
+        else:
+            # Get task-specific prompt - safe to access now
+            prompt = ATOMIC_TASK_PROMPTS[task_type].format(question=question)
         
         # Apply chat template if available
         if hasattr(self.tokenizer, 'apply_chat_template') and self.tokenizer.chat_template is not None:
