@@ -860,6 +860,9 @@ class AblationScorer(HeadScorer):
     def _format_atomic_task_example(self, example: Dict[str, Any], task_type: Optional[str] = None) -> str:
         """Format an atomic task example using task-specific prompt template."""
         question = example.get("question", "")
+        example_task_type_field = example.get("task_type", "")
+        
+        print(f"DEBUG START _format_atomic_task_example: param task_type='{task_type}', example['task_type']='{example_task_type_field}'")
         
         # IMMEDIATE VALIDATION: If task_type looks corrupted (options string), reset it
         if task_type and task_type not in ATOMIC_TASK_PROMPTS:
@@ -934,8 +937,16 @@ class AblationScorer(HeadScorer):
                 warnings.warn(f"Invalid task_type '{task_type}' not in ATOMIC_TASK_PROMPTS. Using generic prompt.")
                 prompt = ATOMIC_TASK_PROMPT_GENERIC.format(question=question)
         else:
-            # Get task-specific prompt - safe to access now
-            prompt = ATOMIC_TASK_PROMPTS[task_type].format(question=question)
+            # Get task-specific prompt - use .get() for extra safety
+            print(f"DEBUG before ATOMIC_TASK_PROMPTS access: task_type='{task_type}', type={type(task_type)}, in dict={task_type in ATOMIC_TASK_PROMPTS}")
+            prompt_template = ATOMIC_TASK_PROMPTS.get(task_type)
+            if prompt_template is None:
+                # This should never happen if check passed, but be defensive
+                import warnings
+                warnings.warn(f"task_type '{task_type}' passed check but not found in dict. Using generic prompt.")
+                prompt = ATOMIC_TASK_PROMPT_GENERIC.format(question=question)
+            else:
+                prompt = prompt_template.format(question=question)
         
         # Apply chat template if available
         if hasattr(self.tokenizer, 'apply_chat_template') and self.tokenizer.chat_template is not None:
