@@ -861,20 +861,37 @@ class AblationScorer(HeadScorer):
         """Format an atomic task example using task-specific prompt template."""
         question = example.get("question", "")
         
-        # Use provided task_type if available, otherwise try from example
-        if task_type is None:
-            task_type = example.get("task_type", "")
+        # Priority 1: Use provided task_type if it's valid
+        if task_type and task_type in ATOMIC_TASK_PROMPTS:
+            # Use it directly - this is the correct task type from discovery script
+            pass
+        else:
+            # If task_type was provided but invalid, don't trust example's field - detect from question
+            if task_type is not None and task_type not in ATOMIC_TASK_PROMPTS:
+                # Provided task_type is invalid (corrupted?), detect from question
+                task_type = ""
+            elif task_type is None:
+                # No task_type provided, try to get from example but validate
+                example_task_type = example.get("task_type", "")
+                
+                # Validate: skip if it looks like options string (corrupted data)
+                if example_task_type and example_task_type in ATOMIC_TASK_PROMPTS:
+                    task_type = example_task_type
+                elif example_task_type:
+                    # Check if it looks like an options list (corrupted)
+                    if (len(example_task_type) < 30 and 
+                        ('"' in example_task_type or "'" in example_task_type or example_task_type.startswith('[')) and
+                        'reasoning' not in example_task_type.lower()):
+                        # Skip corrupted task_type, will detect from question
+                        task_type = ""
+                    else:
+                        task_type = example_task_type
+                else:
+                    task_type = ""
+            else:
+                task_type = ""
         
-        # Validate task_type - skip if it looks like options string (e.g., '">", "<", "=", "unknown"')
-        # Options strings are typically short and contain only symbols/quotes
-        if task_type and task_type not in ATOMIC_TASK_PROMPTS:
-            # Check if it looks like an options list (short, contains quotes/symbols, no "reasoning" keyword)
-            if (len(task_type) < 30 and 
-                ('"' in task_type or "'" in task_type or task_type.startswith('[')) and
-                'reasoning' not in task_type.lower()):
-                task_type = ""  # Reset to empty, will detect from question
-        
-        # Safety check: if task_type is missing or invalid, try to detect from question
+        # Priority 2: Detect from question if task_type is still missing or invalid
         if not task_type or task_type not in ATOMIC_TASK_PROMPTS:
             # Try to detect task type from question content
             q_lower = question.lower()
@@ -891,10 +908,15 @@ class AblationScorer(HeadScorer):
             elif any(x in q_lower for x in ['manages', 'reports to', 'supervisor', 'parent', 'ancestor', 'hierarchy']):
                 task_type = "Transitive reasoning-hierarchy"
         
-        # Get task-specific prompt or fall back to generic
-        if task_type in ATOMIC_TASK_PROMPTS:
-            prompt = ATOMIC_TASK_PROMPTS[task_type].format(question=question)
+        # Final safety check: ensure task_type is valid before using
+        if task_type not in ATOMIC_TASK_PROMPTS:
+            # This should not happen if detection worked, but fallback to generic
+            import warnings
+            warnings.warn(f"Invalid task_type '{task_type}' not in ATOMIC_TASK_PROMPTS. Using generic prompt. Available keys: {list(ATOMIC_TASK_PROMPTS.keys())}")
+            prompt = ATOMIC_TASK_PROMPT_GENERIC.format(question=question)
         else:
+            # Get task-specific prompt
+            prompt = ATOMIC_TASK_PROMPTS[task_type].format(question=question)
             # Try to find by partial match (only if task_type is non-empty)
             prompt = None
             if task_type:
