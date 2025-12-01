@@ -1,0 +1,43 @@
+{
+  "model": "Qwen/Qwen3-4B-Instruct-2507",
+  "tasks": {
+    "subset-implication": {
+      "n_heads": 3,
+      "heads": [
+        {
+          "layer": 18,
+          "head": 25,
+          "score": 0.050000000000000044,
+          "confidence": 1.0,
+          "metadata": {
+            "baseline_accuracy": 1.0,
+            "ablated_accuracy": 0.95,
+            "n_examples": 20
+          }
+        },
+        {
+          "layer": 18,
+          "head": 29,
+          "score": 0.050000000000000044,
+          "confidence": 1.0,
+          "metadata": {
+            "baseline_accuracy": 1.0,
+            "ablated_accuracy": 0.95,
+            "n_examples": 20
+          }
+        },
+        {
+          "layer": 19,
+          "head": 0,
+          "score": 0.050000000000000044,
+          "confidence": 1.0,
+          "metadata": {
+            "baseline_accuracy": 1.0,
+            "ablated_accuracy": 0.95,
+            "n_examples": 20
+          }
+        }
+      ]
+    }
+  }
+}

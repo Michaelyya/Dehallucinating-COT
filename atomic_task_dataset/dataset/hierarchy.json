@@ -5,68 +5,8 @@
         "task_type": "Transitive reasoning-hierarchy"
     },
     {
-        "question": "At a company, Fiona reports to George. George reports to Hannah. Hannah reports to Ivan. Who is Fiona's manager's manager? Options: [Fiona, George, Hannah, Ivan].",
-        "answer": "Hannah",
-        "task_type": "Transitive reasoning-hierarchy"
-    },
-    {
-        "question": "Within a design department, Julia is the team lead for Kevin and Lina. Lina manages Mark. Julia reports to Nathan, the department director. Who is Mark's top-level manager in this department? Options: [Julia, Kevin, Lina, Mark, Nathan].",
-        "answer": "Nathan",
-        "task_type": "Transitive reasoning-hierarchy"
-    },
-    {
-        "question": "In an office, Oscar is Paula's supervisor. Quentin reports to Paula. Rita works under Quentin. Oscar reports to Sam. Who is Rita's supervisor's supervisor? Options: [Oscar, Paula, Quentin, Rita, Sam].",
-        "answer": "Paula",
-        "task_type": "Transitive reasoning-hierarchy"
-    },
-    {
-        "question": "In a regional branch, Tom manages Uma and Victor. Victor supervises Wendy and Xander. Uma reports to Tom. Wendy leads Yolanda. Who is Yolanda's top-level manager in this branch? Options: [Tom, Uma, Victor, Wendy, Xander, Yolanda].",
-        "answer": "Tom",
-        "task_type": "Transitive reasoning-hierarchy"
-    },
-    {
-        "question": "At a university, Dean Angela oversees Chair Brian. Chair Brian oversees Professor Chloe and Professor Daniel. Professor Chloe supervises Teaching Assistant Ethan. Among Chloe, Daniel, Ethan, and Brian, who holds the highest position in the hierarchy? Options: [Angela, Brian, Chloe, Daniel, Ethan].",
-        "answer": "Brian",
-        "task_type": "Transitive reasoning-hierarchy"
-    },
-    {
-        "question": "Within a product team, Manager Iris supervises Lead Jack. Lead Jack supervises Engineer Kelly and Engineer Liam. Engineer Liam mentors Intern Maya. Which person is at the top of this team's hierarchy? Options: [Iris, Jack, Kelly, Liam, Maya].",
-        "answer": "Iris",
-        "task_type": "Transitive reasoning-hierarchy"
-    },
-    {
         "question": "In a family, Nora is Olivia's mother. Olivia is Peter's mother. Peter is Quinn's father. Who is Quinn's grandmother? Options: [Nora, Olivia, Peter, Quinn].",
         "answer": "Olivia",
-        "task_type": "Transitive reasoning-hierarchy"
-    },
-    {
-        "question": "In another family, Robert is Susan's father. Susan is Trevor's mother. Trevor is Uma's father. Who is the earliest ancestor of Uma mentioned here? Options: [Robert, Susan, Trevor, Uma].",
-        "answer": "Robert",
-        "task_type": "Transitive reasoning-hierarchy"
-    },
-    {
-        "question": "Victor is William's father. William is Xavier's father. Victor is also Yara's father. Xavier is Zoe's son. Who is Zoe's grandfather? Options: [Victor, William, Xavier, Yara, Zoe].",
-        "answer": "William",
-        "task_type": "Transitive reasoning-hierarchy"
-    },
-    {
-        "question": "Abby is Bella's mother. Bella is Carla's mother. Carla is Dylan's mother. Who is Dylan's mother's mother? Options: [Abby, Bella, Carla, Dylan].",
-        "answer": "Bella",
-        "task_type": "Transitive reasoning-hierarchy"
-    },
-    {
-        "question": "Eli is Frank's father. Frank is Gina's father. Gina is Harry's mother. Harry is Iris's father. Who is Iris's great-grandparent? Options: [Eli, Frank, Gina, Harry, Iris].",
-        "answer": "Frank",
-        "task_type": "Transitive reasoning-hierarchy"
-    },
-    {
-        "question": "In a club, Leader Alan is above Senior Member Beth in rank. Senior Member Beth is above Member Carl. Member Carl is above Probationary Member Dana. Who is directly two levels above Dana in this hierarchy? Options: [Alan, Beth, Carl, Dana].",
-        "answer": "Beth",
-        "task_type": "Transitive reasoning-hierarchy"
-    },
-    {
-        "question": "In a military unit, Colonel Emma holds a higher position than Major Fred. Major Fred holds a higher position than Captain Grace. Captain Grace holds a higher position than Lieutenant Henry. Among Fred, Grace, and Henry, who has the lowest rank? Options: [Emma, Fred, Grace, Henry].",
-        "answer": "Henry",
         "task_type": "Transitive reasoning-hierarchy"
     },
     {
@@ -100,18 +40,8 @@
         "task_type": "Transitive reasoning-hierarchy"
     },
     {
-        "question": "In a family tree, Alan is Brian's father. Brian is Carla's father and David's father. Carla is Emma's mother. Who is Emma's grandfather? Options: [Alan, Brian, Carla, David, Emma].",
-        "answer": "Brian",
-        "task_type": "Transitive reasoning-hierarchy"
-    },
-    {
         "question": "In a martial arts school, a black belt is above a brown belt in rank. A brown belt is above a purple belt. A purple belt is above a blue belt. A blue belt is above a white belt. Among purple, blue, and white belts, which has the highest rank? Options: [black belt, brown belt, purple belt, blue belt, white belt].",
         "answer": "purple belt",
-        "task_type": "Transitive reasoning-hierarchy"
-    },
-    {
-        "question": "In a scouting program, Eagle Scout is above Life Scout. Life Scout is above Star Scout. Star Scout is above First Class Scout. First Class Scout is above Second Class Scout. Who is directly two levels above First Class Scout? Options: [Eagle Scout, Life Scout, Star Scout, First Class Scout, Second Class Scout].",
-        "answer": "Star Scout",
         "task_type": "Transitive reasoning-hierarchy"
     },
     {
@@ -167,36 +97,6 @@
     {
         "question": "In a digital organization, a JPEG photo belongs to the album Vacation2024. The album Vacation2024 belongs to the folder Photos. The folder Photos belongs to the user account AliceProfile. The user account AliceProfile belongs to the service CloudStore. Which category is the most general one that still contains the JPEG photo? Options: [Vacation2024, Photos, AliceProfile, CloudStore].",
         "answer": "CloudStore",
-        "task_type": "Transitive reasoning-hierarchy"
-    },
-    {
-        "question": "In a family, Anna is Ben's mother. Ben is Carla's father. Carla is Dylan's mother. Who is Dylan's grandparent? Options: [Anna, Ben, Carla, Dylan].",
-        "answer": "Anna",
-        "task_type": "Transitive reasoning-hierarchy"
-    },
-    {
-        "question": "In another family, Ethan is Fiona's father. Fiona is Grace's mother. Grace is Henry's mother. Who is the earliest ancestor of Henry mentioned here? Options: [Ethan, Fiona, Grace, Henry].",
-        "answer": "Ethan",
-        "task_type": "Transitive reasoning-hierarchy"
-    },
-    {
-        "question": "Iris is Jacob's mother. Jacob is Kelly's father. Kelly is Liam's father. Who is Liam's great-grandparent in this family? Options: [Iris, Jacob, Kelly, Liam].",
-        "answer": "Iris",
-        "task_type": "Transitive reasoning-hierarchy"
-    },
-    {
-        "question": "Maria is Noah's mother. Noah is Olivia's father. Olivia is Peter's mother. Peter is Quinn's father. Who is Quinn's grandmother? Options: [Maria, Noah, Olivia, Peter, Quinn].",
-        "answer": "Olivia",
-        "task_type": "Transitive reasoning-hierarchy"
-    },
-    {
-        "question": "Rita is Sam's mother. Sam is Tina's father. Tina is Uma's mother. Uma is Victor's mother. Who is Victor's great-grandparent among the people listed? Options: [Rita, Sam, Tina, Uma, Victor].",
-        "answer": "Sam",
-        "task_type": "Transitive reasoning-hierarchy"
-    },
-    {
-        "question": "Wendy is Xavier's mother. Xavier is Yara's father. Yara is Zoe's mother. Who is Zoe's mother's mother? Options: [Wendy, Xavier, Yara, Zoe].",
-        "answer": "Wendy",
         "task_type": "Transitive reasoning-hierarchy"
     }
 ]

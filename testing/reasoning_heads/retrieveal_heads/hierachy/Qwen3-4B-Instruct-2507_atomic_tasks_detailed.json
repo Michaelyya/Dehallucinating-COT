@@ -1,0 +1,32 @@
+{
+  "model": "Qwen/Qwen3-4B-Instruct-2507",
+  "tasks": {
+    "hierarchy": {
+      "n_heads": 2,
+      "heads": [
+        {
+          "layer": 23,
+          "head": 0,
+          "score": 0.15000000000000002,
+          "confidence": 1.0,
+          "metadata": {
+            "baseline_accuracy": 0.75,
+            "ablated_accuracy": 0.6,
+            "n_examples": 20
+          }
+        },
+        {
+          "layer": 24,
+          "head": 0,
+          "score": 0.09999999999999998,
+          "confidence": 1.0,
+          "metadata": {
+            "baseline_accuracy": 0.75,
+            "ablated_accuracy": 0.65,
+            "n_examples": 20
+          }
+        }
+      ]
+    }
+  }
+}

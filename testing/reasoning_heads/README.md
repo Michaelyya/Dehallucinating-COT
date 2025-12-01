@@ -1,3 +1,24 @@
+## zipeng start
+module load StdEnv/2023 gcc/12.3 cuda/12.6 arrow/21.0.0 rust/1.85.0 python/3.11.5 arrow/16.1.0
+source deha/bin/activate
+cd /home/zpoints/links/projects/def-cpsmcgil/zpoints/Dehallucinating-COT/testing/reasoning_heads
+
+salloc -p debug --time=2:00:00 --gpus-per-node=1 --account=def-cpsmcgil 
+salloc -p compute --time=5:00:00 --gpus-per-node=1 --account=def-cpsmcgil
+
+HF_HUB_OFFLINE=1 python discover_atomic_task_heads.py --task_type hierarchy
+HF_HUB_OFFLINE=1 python discover_atomic_task_heads.py --task_type subset-implication
+
+HF_HUB_OFFLINE=1 python discover_atomic_task_heads.py --task_type scalar-max
+
+HF_HUB_OFFLINE=1 python discover_atomic_task_heads.py --task_type symbolic-inequality
+HF_HUB_OFFLINE=1 python discover_atomic_task_heads.py --task_type temporal-order
+HF_HUB_OFFLINE=1 python discover_atomic_task_heads.py --task_type spatial-containment
+
+module load StdEnv/2023 gcc/12.3 cuda/12.6 arrow/21.0.0 rust/1.85.0 python/3.11.5
+virtualenv --no-download deha
+source deha/bin/activate
+
 
 ## Quick Start
 

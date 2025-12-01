@@ -12,12 +12,15 @@ Usage:
 """
 
 import os
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
+
 import sys
 import json
 import argparse
 from typing import Dict, List, Any, Optional
 from dataclasses import dataclass
 import torch
+from tqdm import tqdm 
 
 # Add parent directories to path
 script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -33,7 +36,11 @@ from transformers import AutoTokenizer, AutoModelForCausalLM
 from head_scoring import AblationScorer, HeadScore, ATOMIC_TASK_TYPES, ATOMIC_TASK_PROMPTS
 
 # Default cache directory
-DEFAULT_CACHE_DIR = os.environ.get("HF_HOME", "/cluster/scratch/yongyu/cache")
+# DEFAULT_CACHE_DIR = os.environ.get("HF_HOME", "/cluster/scratch/yongyu/cache")
+# DEFAULT_CACHE_DIR = '/home/zpoints/links/scratch/.cache/huggingface/'
+DEFAULT_CACHE_DIR = '/home/zpoints/links/scratch/.cache/huggingface/hub/models--Qwen--Qwen3-4B-Instruct-2507/snapshots/cdbee75f17c01a7cc42f958dc650907174af0554'
+
+
 
 # Atomic task dataset directory
 ATOMIC_DATASET_DIR = os.path.join(project_root, "atomic_task_dataset", "dataset")
@@ -118,9 +125,11 @@ def discover_heads_for_task(
     
     # Set limits
     if max_layers is None:
-        max_layers = min(n_layers, 8)  # Default to first 8 layers
+        # max_layers = min(n_layers, 8)  # Default to first 8 layers
+        max_layers = n_layers
     if max_heads_per_layer is None:
-        max_heads_per_layer = min(n_heads, 8)  # Default to first 8 heads
+        # max_heads_per_layer = min(n_heads, 8)  # Default to first 8 heads
+        max_heads_per_layer = n_heads
     
     print(f"Model has {n_layers} layers × {n_heads} heads")
     print(f"Scoring {max_layers} layers × {max_heads_per_layer} heads = {max_layers * max_heads_per_layer} heads")
@@ -305,30 +314,35 @@ def main():
         "--n_examples",
         type=int,
         default=20,
+        # default=1,
         help="Number of examples per task for scoring"
     )
     parser.add_argument(
         "--top_k",
         type=int,
-        default=20,
+        # default=5,
+        default=1000000,
         help="Top K heads to select per task"
     )
     parser.add_argument(
         "--max_layers",
         type=int,
         default=None,
+        # default=5,
         help="Maximum layers to scan (default: min(8, total_layers))"
     )
     parser.add_argument(
         "--max_heads_per_layer",
         type=int,
         default=None,
+        # default=5,
         help="Maximum heads per layer to scan (default: min(8, total_heads))"
     )
     parser.add_argument(
         "--output_dir",
         type=str,
-        default=None,
+        default='/home/zpoints/links/scratch/deha/hi',
+        # default='/home/zpoints/links/scratch/deha/im',
         help="Output directory for results (default: retrieval_heads/)"
     )
     parser.add_argument(
@@ -350,10 +364,10 @@ def main():
         args.output_dir = os.path.join(project_root, "retrieval_heads")
     
     # Set cache directory
-    os.environ["HF_HOME"] = args.cache_dir
-    os.environ["TRANSFORMERS_CACHE"] = args.cache_dir
-    os.makedirs(args.cache_dir, exist_ok=True)
-    print(f"Using cache directory: {args.cache_dir}")
+    # os.environ["HF_HOME"] = args.cache_dir
+    # os.environ["TRANSFORMERS_CACHE"] = args.cache_dir
+    # os.makedirs(args.cache_dir, exist_ok=True)
+    # print(f"Using cache directory: {args.cache_dir}")
     
     # Determine which tasks to run
     if args.task_type:
@@ -379,19 +393,23 @@ def main():
     print(f"{'='*60}")
     
     tokenizer = AutoTokenizer.from_pretrained(
-        args.model_name,
-        cache_dir=args.cache_dir,
-        trust_remote_code=True
+        # args.model_name,
+        DEFAULT_CACHE_DIR,
+        local_files_only=True,
+        # cache_dir=args.cache_dir,
+        # trust_remote_code=True
     )
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
     
     model = AutoModelForCausalLM.from_pretrained(
-        args.model_name,
+        # args.model_name,
+        DEFAULT_CACHE_DIR,
         torch_dtype=torch.bfloat16,
         device_map="auto",
-        cache_dir=args.cache_dir,
-        trust_remote_code=True
+        local_files_only=True,
+        # cache_dir=args.cache_dir,
+        # trust_remote_code=True
     ).eval()
     
     device = "cuda" if torch.cuda.is_available() else "cpu"

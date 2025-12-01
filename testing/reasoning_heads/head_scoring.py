@@ -336,7 +336,8 @@ class HeadScorer(ABC):
         first_head = True
         
         for layer in tqdm(range(max_layers), desc="  Layers", leave=False):
-            for head in range(max_heads_per_layer):
+            for head in tqdm(range(max_heads_per_layer), desc="    Heads", leave=False):
+            # for head in range(max_heads_per_layer):
                 try:
                     # Only debug first head of first layer
                     debug = first_head and layer == 0 and head == 0
@@ -422,6 +423,7 @@ class AblationScorer(HeadScorer):
         ablated_heads: Optional[List[Tuple[int, int]]] = None,
         debug: bool = False
     ) -> Dict[str, float]:
+        
         # Check if this is an atomic task (multiple-choice exact match)
         is_atomic_task = (subtask_name in ATOMIC_TASK_TYPES.values() or 
                          subtask_name in ATOMIC_TASK_TYPES.keys())
@@ -438,7 +440,7 @@ class AblationScorer(HeadScorer):
         correct = 0
         total = 0
         all_outputs = []  # For debugging
-        
+
         for example in examples:
             try:
                 input_text = self._format_example(example)
@@ -458,7 +460,8 @@ class AblationScorer(HeadScorer):
                             eos_token_id=self.tokenizer.eos_token_id,
                             use_cache=True
                         )
-                
+
+                print('!!!!!!!!!!!!!')
                 # Decode full output for debugging
                 decoded_full = self.tokenizer.decode(output[0], skip_special_tokens=True)
                 
@@ -658,16 +661,31 @@ class AblationScorer(HeadScorer):
                             eos_token_id=self.tokenizer.eos_token_id,
                             use_cache=True
                         )
-                
+
                 # Decode and extract generated text
                 decoded_full = self.tokenizer.decode(output[0], skip_special_tokens=True)
                 input_length = len(input_ids[0])
                 generated_tokens = output[0][input_length:]
                 generated_text = self.tokenizer.decode(generated_tokens, skip_special_tokens=True)
-                
+
                 # Clean up
                 generated_text = re.sub(r'^assistant\s*\n*\s*', '', generated_text, flags=re.IGNORECASE)
                 generated_text = generated_text.strip()
+
+                # ==== 这里是你要插的 debug ====
+                # 输入长度
+                input_length = len(input_ids[0])
+                # 生成的新 token 数
+                gen_len = len(output[0]) - input_length
+                # 只在 baseline（不 ablate）且第一个样本时打印一次
+                # if ablated_heads is None and idx == 0:
+                print(
+                    f"[DEBUG] subtask={subtask_name}, "
+                    f"first example generated {gen_len} new tokens "
+                    f"(input_len={input_length}, total_len={len(output[0])})"
+                    f"Generated text: \n{generated_text}"
+                )
+                # =================================
                 
                 if input_text in decoded_full:
                     generated_text_alt = decoded_full.replace(input_text, "", 1).strip()
@@ -1264,171 +1282,171 @@ class AblationScorer(HeadScorer):
         return bool(re.search(r'\d+', decoded))
 
 
-class CausalPatchingScorer(HeadScorer):
+# class CausalPatchingScorer(HeadScorer):
     
-    def __init__(self, model, tokenizer, device: str = "cuda"):
-        super().__init__(model, tokenizer, device)
-        self.cache = {}
+#     def __init__(self, model, tokenizer, device: str = "cuda"):
+#         super().__init__(model, tokenizer, device)
+#         self.cache = {}
     
-    def score_head(
-        self,
-        layer: int,
-        head: int,
-        examples: List[Dict[str, Any]],
-        subtask_name: str
-    ) -> HeadScore:
-        # Get clean (correct) examples
-        clean_examples = [ex for ex in examples if self._is_clean(ex)]
-        corrupted_examples = [ex for ex in examples if not self._is_clean(ex)]
+#     def score_head(
+#         self,
+#         layer: int,
+#         head: int,
+#         examples: List[Dict[str, Any]],
+#         subtask_name: str
+#     ) -> HeadScore:
+#         # Get clean (correct) examples
+#         clean_examples = [ex for ex in examples if self._is_clean(ex)]
+#         corrupted_examples = [ex for ex in examples if not self._is_clean(ex)]
         
-        if len(clean_examples) == 0 or len(corrupted_examples) == 0:
-            # Use all examples as both clean and corrupted
-            clean_examples = examples
-            corrupted_examples = examples
+#         if len(clean_examples) == 0 or len(corrupted_examples) == 0:
+#             # Use all examples as both clean and corrupted
+#             clean_examples = examples
+#             corrupted_examples = examples
         
-        baseline_diff = self._get_logit_difference(clean_examples, corrupted_examples, subtask_name)
+#         baseline_diff = self._get_logit_difference(clean_examples, corrupted_examples, subtask_name)
         
-        # Get patched logit difference
-        patched_diff = self._get_patched_logit_difference(
-            clean_examples, corrupted_examples, layer, head, subtask_name
-        )
+#         # Get patched logit difference
+#         patched_diff = self._get_patched_logit_difference(
+#             clean_examples, corrupted_examples, layer, head, subtask_name
+#         )
         
-        # Score is the normalized effect of patching
-        if baseline_diff != 0:
-            score = abs(patched_diff - baseline_diff) / abs(baseline_diff)
-        else:
-            score = abs(patched_diff)
+#         # Score is the normalized effect of patching
+#         if baseline_diff != 0:
+#             score = abs(patched_diff - baseline_diff) / abs(baseline_diff)
+#         else:
+#             score = abs(patched_diff)
         
-        confidence = min(len(examples) / 10.0, 1.0)
+#         confidence = min(len(examples) / 10.0, 1.0)
         
-        return HeadScore(
-            layer=layer,
-            head=head,
-            score=score,
-            confidence=confidence,
-            method="causal_patching",
-            metadata={
-                "baseline_logit_diff": baseline_diff,
-                "patched_logit_diff": patched_diff,
-                "n_examples": len(examples)
-            }
-        )
+#         return HeadScore(
+#             layer=layer,
+#             head=head,
+#             score=score,
+#             confidence=confidence,
+#             method="causal_patching",
+#             metadata={
+#                 "baseline_logit_diff": baseline_diff,
+#                 "patched_logit_diff": patched_diff,
+#                 "n_examples": len(examples)
+#             }
+#         )
     
-    def _is_clean(self, example: Dict[str, Any]) -> bool:
-        # Simplified - should check actual correctness
-        return True
+#     def _is_clean(self, example: Dict[str, Any]) -> bool:
+#         # Simplified - should check actual correctness
+#         return True
     
-    def _get_logit_difference(
-        self,
-        clean_examples: List[Dict[str, Any]],
-        corrupted_examples: List[Dict[str, Any]],
-        subtask_name: str
-    ) -> float:
-        # Simplified implementation
-        return 1.0
+#     def _get_logit_difference(
+#         self,
+#         clean_examples: List[Dict[str, Any]],
+#         corrupted_examples: List[Dict[str, Any]],
+#         subtask_name: str
+#     ) -> float:
+#         # Simplified implementation
+#         return 1.0
     
-    def _get_patched_logit_difference(
-        self,
-        clean_examples: List[Dict[str, Any]],
-        corrupted_examples: List[Dict[str, Any]],
-        layer: int,
-        head: int,
-        subtask_name: str
-    ) -> float:
-        # Simplified implementation
-        return 0.5
+#     def _get_patched_logit_difference(
+#         self,
+#         clean_examples: List[Dict[str, Any]],
+#         corrupted_examples: List[Dict[str, Any]],
+#         layer: int,
+#         head: int,
+#         subtask_name: str
+#     ) -> float:
+#         # Simplified implementation
+#         return 0.5
 
 
-class MutualInfoScorer(HeadScorer):
+# class MutualInfoScorer(HeadScorer):
     
-    def __init__(self, model, tokenizer, device: str = "cuda"):
-        super().__init__(model, tokenizer, device)
+#     def __init__(self, model, tokenizer, device: str = "cuda"):
+#         super().__init__(model, tokenizer, device)
     
-    def score_head(
-        self,
-        layer: int,
-        head: int,
-        examples: List[Dict[str, Any]],
-        subtask_name: str
-    ) -> HeadScore:
-        # Collect activations and labels
-        activations = []
-        labels = []
+#     def score_head(
+#         self,
+#         layer: int,
+#         head: int,
+#         examples: List[Dict[str, Any]],
+#         subtask_name: str
+#     ) -> HeadScore:
+#         # Collect activations and labels
+#         activations = []
+#         labels = []
         
-        for example in examples:
-            # Get head activations
-            act = self._get_head_activation(layer, head, example)
-            if act is not None:
-                activations.append(act)
-                # Get label for this subtask
-                label = self._get_subtask_label(example, subtask_name)
-                labels.append(label)
+#         for example in examples:
+#             # Get head activations
+#             act = self._get_head_activation(layer, head, example)
+#             if act is not None:
+#                 activations.append(act)
+#                 # Get label for this subtask
+#                 label = self._get_subtask_label(example, subtask_name)
+#                 labels.append(label)
         
-        if len(activations) < 2:
-            return HeadScore(
-                layer=layer, head=head, score=0.0, confidence=0.0,
-                method="mutual_info", metadata={"error": "insufficient_data"}
-            )
+#         if len(activations) < 2:
+#             return HeadScore(
+#                 layer=layer, head=head, score=0.0, confidence=0.0,
+#                 method="mutual_info", metadata={"error": "insufficient_data"}
+#             )
         
-        # Calculate mutual information
-        activations = np.array(activations)
-        labels = np.array(labels)
+#         # Calculate mutual information
+#         activations = np.array(activations)
+#         labels = np.array(labels)
         
-        # Discretize activations for MI calculation
-        act_binned = self._discretize(activations)
-        label_binned = self._discretize(labels) if labels.dtype == float else labels
+#         # Discretize activations for MI calculation
+#         act_binned = self._discretize(activations)
+#         label_binned = self._discretize(labels) if labels.dtype == float else labels
         
-        # Calculate MI
-        mi_score = self._mutual_information(act_binned, label_binned)
+#         # Calculate MI
+#         mi_score = self._mutual_information(act_binned, label_binned)
         
-        confidence = min(len(examples) / 20.0, 1.0)
+#         confidence = min(len(examples) / 20.0, 1.0)
         
-        return HeadScore(
-            layer=layer,
-            head=head,
-            score=mi_score,
-            confidence=confidence,
-            method="mutual_info",
-            metadata={
-                "n_examples": len(examples),
-                "mean_activation": float(np.mean(activations)),
-                "std_activation": float(np.std(activations))
-            }
-        )
+#         return HeadScore(
+#             layer=layer,
+#             head=head,
+#             score=mi_score,
+#             confidence=confidence,
+#             method="mutual_info",
+#             metadata={
+#                 "n_examples": len(examples),
+#                 "mean_activation": float(np.mean(activations)),
+#                 "std_activation": float(np.std(activations))
+#             }
+#         )
     
-    def _get_head_activation(
-        self,
-        layer: int,
-        head: int,
-        example: Dict[str, Any]
-    ) -> Optional[np.ndarray]:
-        # This would need to hook into model forward pass
-        # Simplified version
-        return np.random.randn(10)  # Placeholder
+#     def _get_head_activation(
+#         self,
+#         layer: int,
+#         head: int,
+#         example: Dict[str, Any]
+#     ) -> Optional[np.ndarray]:
+#         # This would need to hook into model forward pass
+#         # Simplified version
+#         return np.random.randn(10)  # Placeholder
     
-    def _get_subtask_label(self, example: Dict[str, Any], subtask_name: str) -> Any:
-        if subtask_name == "path_finding":
-            return len(example.get("path", []))
-        elif subtask_name == "goal_identification":
-            return example.get("goal", 0)
-        return 0
+#     def _get_subtask_label(self, example: Dict[str, Any], subtask_name: str) -> Any:
+#         if subtask_name == "path_finding":
+#             return len(example.get("path", []))
+#         elif subtask_name == "goal_identification":
+#             return example.get("goal", 0)
+#         return 0
     
-    def _discretize(self, values: np.ndarray, n_bins: int = 10) -> np.ndarray:
-        if values.dtype == float:
-            _, bins = np.histogram(values, bins=n_bins)
-            return np.digitize(values, bins) - 1
-        return values
+#     def _discretize(self, values: np.ndarray, n_bins: int = 10) -> np.ndarray:
+#         if values.dtype == float:
+#             _, bins = np.histogram(values, bins=n_bins)
+#             return np.digitize(values, bins) - 1
+#         return values
     
-    def _mutual_information(self, x: np.ndarray, y: np.ndarray) -> float:
-        # Use scipy's mutual information
-        try:
-            from sklearn.metrics import mutual_info_score
-            return mutual_info_score(x, y)
-        except ImportError:
-            # Fallback: simple correlation
-            if len(np.unique(x)) > 1 and len(np.unique(y)) > 1:
-                return abs(np.corrcoef(x, y)[0, 1])
-            return 0.0
+#     def _mutual_information(self, x: np.ndarray, y: np.ndarray) -> float:
+#         # Use scipy's mutual information
+#         try:
+#             from sklearn.metrics import mutual_info_score
+#             return mutual_info_score(x, y)
+#         except ImportError:
+#             # Fallback: simple correlation
+#             if len(np.unique(x)) > 1 and len(np.unique(y)) > 1:
+#                 return abs(np.corrcoef(x, y)[0, 1])
+#             return 0.0
 
 
 def create_scorer(
