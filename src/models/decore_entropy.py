@@ -154,7 +154,17 @@ class DeCoReEntropy(BaseModel):
             self.decoder_configs.configs.retrieval_heads_dir,
             f"{model_base_name}.json",
         )
+        # Convert to absolute path for clarity
+        if not os.path.isabs(file_path):
+            file_path = os.path.abspath(file_path)
         print(f"Loading from: {file_path}")
+        print(f"File exists: {os.path.exists(file_path)}")
+        if os.path.exists(file_path):
+            print(f"File size: {os.path.getsize(file_path)} bytes")
+            # Read first 200 chars to verify file content
+            with open(file_path, 'r') as f:
+                first_chars = f.read(200)
+                print(f"First 200 chars of file: {first_chars}")
 
         with open(file_path) as file:
             head_list = json.loads(file.readline())
