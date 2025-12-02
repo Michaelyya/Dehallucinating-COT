@@ -150,13 +150,13 @@ class DeCoReEntropy(BaseModel):
         self.num_retrieval_heads = self.decoder_configs.configs.num_retrieval_heads
 
         model_base_name = model_name_or_path.split("/")[1]
+        file_path = os.path.join(
+            self.decoder_configs.configs.retrieval_heads_dir,
+            f"{model_base_name}.json",
+        )
+        print(f"Loading from: {file_path}")
 
-        with open(
-            os.path.join(
-                self.decoder_configs.configs.retrieval_heads_dir,
-                f"{model_base_name}.json",
-            )
-        ) as file:
+        with open(file_path) as file:
             head_list = json.loads(file.readline())
 
         stable_block_list = [(l[0], np.mean(l[1])) for l in head_list.items()]
