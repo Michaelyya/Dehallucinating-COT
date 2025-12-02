@@ -159,8 +159,13 @@ class DeCoReEntropy(BaseModel):
         with open(file_path) as file:
             head_list = json.loads(file.readline())
 
+        print(f"Loaded {len(head_list)} head entries from file")
+        print(f"First few entries: {list(head_list.items())[:3]}")
+        
         stable_block_list = [(l[0], np.mean(l[1])) for l in head_list.items()]
         stable_block_list = sorted(stable_block_list, key=lambda x: x[1], reverse=True)
+        print(f"Top {self.num_retrieval_heads} heads after sorting: {stable_block_list[:self.num_retrieval_heads]}")
+        
         self.retrieval_heads = [
             [int(ll) for ll in l[0].split("-")] for l in stable_block_list
         ][: self.num_retrieval_heads]
