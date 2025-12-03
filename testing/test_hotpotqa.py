@@ -231,10 +231,56 @@ class HotpotQATester:
         with open(detailed_file, 'w') as f:
             json.dump(detailed_results, f, indent=2)
         
+        # Save human-readable comparison file
+        self._save_comparison(predictions)
+        
         print(f"Results saved to {self.output_dir}")
         print("Final Metrics:")
         for key, value in metrics.items():
             print(f"  {key}: {value:.4f}")
+    
+    def _save_comparison(self, predictions: List[Dict]):
+        """Save a human-readable comparison file for prompt tuning"""
+        comparison_file = os.path.join(self.output_dir, "comparison.txt")
+        with open(comparison_file, 'w', encoding='utf-8') as f:
+            for i, pred in enumerate(predictions):
+                f.write("=" * 80 + "\n")
+                f.write(f"Example {i+1} (ID: {pred.get('example_id', 'N/A')})\n")
+                f.write("=" * 80 + "\n\n")
+                
+                f.write("QUESTION:\n")
+                f.write(f"{pred.get('question', 'N/A')}\n\n")
+                
+                context = pred.get('context', '')
+                if len(context) > 500:
+                    context_preview = context[:500] + "... [truncated]"
+                else:
+                    context_preview = context
+                f.write("CONTEXT (preview):\n")
+                f.write(f"{context_preview}\n\n")
+                
+                f.write("-" * 80 + "\n")
+                f.write("EXPECTED ANSWER:\n")
+                f.write(f"{pred.get('answer', 'N/A')}\n\n")
+                
+                f.write("MODEL'S FULL OUTPUT:\n")
+                f.write(f"{pred.get('predicted_explanation', 'N/A')}\n\n")
+                
+                f.write("EXTRACTED ANSWER:\n")
+                f.write(f"{pred.get('predicted_answer', 'N/A')}\n\n")
+                
+                if 'reference_explanation' in pred:
+                    f.write("REFERENCE EXPLANATION:\n")
+                    f.write(f"{pred.get('reference_explanation', 'N/A')}\n\n")
+                
+                # Check match
+                expected = pred.get('answer', '').strip().lower()
+                predicted = pred.get('predicted_answer', '').strip().lower()
+                match_status = "✓ MATCH" if expected == predicted else "✗ MISMATCH"
+                f.write(f"STATUS: {match_status}\n\n")
+                f.write("\n" * 2)
+        
+        print(f"Comparison file saved to: {comparison_file}")
 
 
 def load_config(config_path: str) -> Dict[str, Any]:
