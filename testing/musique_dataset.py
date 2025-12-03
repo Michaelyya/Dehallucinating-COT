@@ -93,13 +93,12 @@ class MuSiQueDataset(Dataset):
                     "content": (
                         f"Context: {context_text}\n\n"
                         f"Question: {question}\n\n"
-                        "Respond in this exact format (do not add extra lines):\n"
-                        "Final answer: <few words only>\n"
+                        "Respond in this exact format:\n"
+                        "<answer (few words only)>\n"
                         "Explanation:\n"
                         "1. Evidence: \"<verbatim phrase from Context supporting the answer>\"\n"
                         "2. Evidence: \"<another verbatim phrase from Context if helpful>\"\n"
-                        "3. Reasoning: <short 1-sentence link from evidence to the answer>\n\n"
-                        "Answer:"
+                        "3. Reasoning: <short 1-sentence link from evidence to the answer>"
                     )
                 }
             ]
@@ -112,13 +111,12 @@ class MuSiQueDataset(Dataset):
             prompted_question = (
                 f"Context: {context_text}\n\n"
                 f"Question: {question}\n\n"
-                "Respond in this exact format (do not add extra lines):\n"
-                "Final answer: <few words only>\n"
+                "Respond in this exact format:\n"
+                "<answer (few words only)>\n"
                 "Explanation:\n"
                 "1. Evidence: \"<verbatim phrase from Context supporting the answer>\"\n"
                 "2. Evidence: \"<another verbatim phrase from Context if helpful>\"\n"
-                "3. Reasoning: <short 1-sentence link from evidence to the answer>\n\n"
-                "Answer:"
+                "3. Reasoning: <short 1-sentence link from evidence to the answer>"
             )
         
         return {
@@ -146,26 +144,34 @@ class MuSiQueDataset(Dataset):
 
 
 def extract_answer(prediction: str) -> str:
-    prediction_ori = prediction
-    extract = (
-        re.search(r'(?:final\s+)?answer\s*:\s*([^\n]+)', prediction, re.IGNORECASE)
-        or re.search(r'the\s+answer\s+is\s*[:]?\s*([^\n]+)', prediction, re.IGNORECASE)
-    )
-    if extract is not None:
-        prediction = extract.group(1)
-        prediction = re.sub(r'^\W+|\W+$', '', prediction)
-    prediction = re.sub(r'^\W+|\W+$', '', prediction)
-    if not prediction:
-        patterns = [
-            r'(?:final\s+)?answer:\s*(.+?)(?:\n|$)',
-            r'answer:\s*(.+?)(?:\n|$)',
-            r'the\s+answer\s+is:\s*(.+?)(?:\n|$)'
-        ]
-        for p in patterns:
-            m = re.search(p, prediction_ori, re.IGNORECASE | re.DOTALL)
-            if m:
-                return m.group(1).strip()
-    return prediction
+    """Extract answer from format: <answer>\nExplanation:..."""
+    prediction = prediction.strip()
+    
+    # First, try to extract everything before "Explanation:"
+    explanation_match = re.search(r'Explanation\s*:', prediction, re.IGNORECASE)
+    if explanation_match:
+        answer = prediction[:explanation_match.start()].strip()
+        if answer:
+            return answer
+    
+    # Fallback: extract from common patterns (for backward compatibility)
+    patterns = [
+        r'(?:final\s+)?answer\s*:\s*([^\n]+)',
+        r'the\s+answer\s+is\s*[:]?\s*([^\n]+)',
+        r'^([^\n]+?)(?:\n|$)'  # First line if no pattern matches
+    ]
+    for pattern in patterns:
+        match = re.search(pattern, prediction, re.IGNORECASE)
+        if match:
+            answer = match.group(1).strip()
+            # Remove common prefixes
+            answer = re.sub(r'^(final\s+)?answer\s*:\s*', '', answer, flags=re.IGNORECASE)
+            if answer and answer.lower() not in ['none', 'n/a', 'unknown']:
+                return answer
+    
+    # Last resort: return first line
+    first_line = prediction.split('\n')[0].strip()
+    return first_line if first_line else ""
 
 
 def load_musique_dataset(

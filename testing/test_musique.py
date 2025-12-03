@@ -2,6 +2,7 @@ import os
 import json
 import argparse
 import yaml
+import re
 from typing import Dict, List, Any
 import torch
 from torch.utils.data import DataLoader
@@ -144,6 +145,11 @@ class MuSiQueTester:
                     short_answer = extract_answer(full_output)
                     if not short_answer:
                         short_answer = self.metrics.extract_answer_from_response(full_output)
+                    
+                    # Extract explanation part (everything after "Explanation:")
+                    explanation_match = re.search(r'Explanation\s*:\s*(.*)', full_output, re.IGNORECASE | re.DOTALL)
+                    predicted_explanation = explanation_match.group(1).strip() if explanation_match else full_output
+                    
                     pred_dict = {
                         "example_id": batch["example_id"][i],
                         "question": batch["question"][i],
@@ -151,7 +157,8 @@ class MuSiQueTester:
                         "predicted_answer": short_answer,
                         "answer": batch["answer"][i],
                         "reference_explanation": batch["reference_explanation"][i],
-                        "predicted_explanation": full_output,
+                        "predicted_explanation": predicted_explanation,
+                        "full_output": full_output,  # Keep full output for debugging
                     }
                     if "alphas" in prediction and prediction["alphas"] is not None:
                         pred_dict["alphas"] = prediction["alphas"][i] if isinstance(prediction["alphas"], list) else prediction["alphas"]
