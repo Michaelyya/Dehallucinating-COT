@@ -5,7 +5,7 @@
 data:
   name: "MEQA"
   data_dir: "MEQA/data"
-  split: "dev"
+  split: "test"
   num_samples: 100
   max_context_length: 4096
   max_question_length: 512

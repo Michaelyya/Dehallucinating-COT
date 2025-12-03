@@ -29,7 +29,7 @@ decoder:
   method: "DeCoReEntropy"
   configs:
     retrieval_heads_dir: "../retrieval_heads/"
-    num_retrieval_heads: 20
+    num_retrieval_heads: 12
     post_softmax: true
     alpha_cap: null
     scale_alpha: false
