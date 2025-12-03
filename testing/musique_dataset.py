@@ -93,8 +93,8 @@ class MuSiQueDataset(Dataset):
                     "content": (
                         f"Context: {context_text}\n\n"
                         f"Question: {question}\n\n"
-                        "Respond in this exact format:\n"
-                        "<answer (few words only)>\n"
+                        "First, provide your answer in a few words only (no prefix, just the answer).\n"
+                        "Then, provide an explanation in this format:\n"
                         "Explanation:\n"
                         "1. Evidence: \"<verbatim phrase from Context supporting the answer>\"\n"
                         "2. Evidence: \"<another verbatim phrase from Context if helpful>\"\n"
@@ -111,8 +111,8 @@ class MuSiQueDataset(Dataset):
             prompted_question = (
                 f"Context: {context_text}\n\n"
                 f"Question: {question}\n\n"
-                "Respond in this exact format:\n"
-                "<answer (few words only)>\n"
+                "First, provide your answer in a few words only (no prefix, just the answer).\n"
+                "Then, provide an explanation in this format:\n"
                 "Explanation:\n"
                 "1. Evidence: \"<verbatim phrase from Context supporting the answer>\"\n"
                 "2. Evidence: \"<another verbatim phrase from Context if helpful>\"\n"
