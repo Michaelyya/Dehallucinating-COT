@@ -4,7 +4,7 @@
 # Dataset configuration
 data:
   name: "HotpotQA"
-  data_dir: "data/hotpotQA/hotpot_dev_fullwiki_v1.0.jsonl"
+  data_dir: "data/hotpotQA/hotpot_test_fullwiki_v1.json"
   split: "test"
   num_samples: 100
   max_context_length: 4096
