@@ -78,13 +78,12 @@ class MEQADataset(Dataset):
                     "content": (
                         f"Context: {context}\n\n"
                         f"Question: {question}\n\n"
-                        "Respond in this exact format (do not add extra lines):\n"
-                        "Final answer: <few words only>\n"
+                        "First, provide your answer in a few words only (no prefix, just the answer).\n"
+                        "Then, provide an explanation in this format:\n"
                         "Explanation:\n"
                         "1. Evidence: \"<verbatim phrase from Context supporting the answer>\"\n"
                         "2. Evidence: \"<another verbatim phrase from Context if helpful>\"\n"
-                        "3. Reasoning: <short 1-sentence link from evidence to the answer>\n\n"
-                        "Answer:"
+                        "3. Reasoning: <short 1-sentence link from evidence to the answer>"
                     )
                 }
             ]
@@ -100,13 +99,12 @@ class MEQADataset(Dataset):
             prompted_question = (
                 f"Context: {context}\n\n"
                 f"Question: {question}\n\n"
-                "Respond in this exact format (do not add extra lines):\n"
-                "Final answer: <few words only>\n"
+                "First, provide your answer in a few words only (no prefix, just the answer).\n"
+                "Then, provide an explanation in this format:\n"
                 "Explanation:\n"
                 "1. Evidence: \"<verbatim phrase from Context supporting the answer>\"\n"
                 "2. Evidence: \"<another verbatim phrase from Context if helpful>\"\n"
-                "3. Reasoning: <short 1-sentence link from evidence to the answer>\n\n"
-                "Answer:"
+                "3. Reasoning: <short 1-sentence link from evidence to the answer>"
             )
         
         composed_prompt = compose_prompt(
