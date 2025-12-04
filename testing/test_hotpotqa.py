@@ -145,6 +145,12 @@ class HotpotQATester:
         print(f"Decoder: {self.decoder_configs.name}")
         print(f"Device: {self.device}")
         
+        # Check if using test set (which may not have answers)
+        data_path = self.config.get("data", {}).get("data_dir", "")
+        if "test" in data_path.lower() and "_test_" in data_path:
+            print("\n⚠️  WARNING: Using HotpotQA test set - answers may not be available.")
+            print("   For evaluation with answer metrics, use the dev set: hotpot_dev_fullwiki_v1.json\n")
+        
         all_predictions = []
         
         # Run inference
@@ -261,7 +267,12 @@ class HotpotQATester:
                 
                 f.write("-" * 80 + "\n")
                 f.write("EXPECTED ANSWER:\n")
-                f.write(f"{pred.get('answer', 'N/A')}\n\n")
+                expected_answer = pred.get('answer', '')
+                if not expected_answer:
+                    f.write("[No answer in test set - using test data]\n")
+                else:
+                    f.write(f"{expected_answer}\n")
+                f.write("\n")
                 
                 f.write("MODEL'S FULL OUTPUT:\n")
                 f.write(f"{pred.get('predicted_explanation', 'N/A')}\n\n")
@@ -273,10 +284,13 @@ class HotpotQATester:
                     f.write("REFERENCE EXPLANATION:\n")
                     f.write(f"{pred.get('reference_explanation', 'N/A')}\n\n")
                 
-                # Check match
+                # Check match (only if expected answer exists)
                 expected = pred.get('answer', '').strip().lower()
                 predicted = pred.get('predicted_answer', '').strip().lower()
-                match_status = "✓ MATCH" if expected == predicted else "✗ MISMATCH"
+                if expected:
+                    match_status = "✓ MATCH" if expected == predicted else "✗ MISMATCH"
+                else:
+                    match_status = "⚠ NO REFERENCE (test set)"
                 f.write(f"STATUS: {match_status}\n\n")
                 f.write("\n" * 2)
         

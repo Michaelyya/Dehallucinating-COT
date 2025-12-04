@@ -124,6 +124,7 @@ class HotpotQAMetrics:
         exact_matches = 0
         f1_scores = []
         sp_f1_scores = []
+        answer_evaluated_count = 0
         
         for i, (pred, ref, pred_sp, ref_sp) in enumerate(
             zip(self.predictions, self.references, 
@@ -135,12 +136,14 @@ class HotpotQAMetrics:
             else:
                 extracted_answer = pred
             
-            # Calculate answer metrics
-            if self.exact_match(extracted_answer, ref):
-                exact_matches += 1
-            
-            f1 = self.f1_score(extracted_answer, ref)
-            f1_scores.append(f1)
+            # Calculate answer metrics (only if reference answer exists)
+            if ref and ref.strip():  # Only evaluate if reference answer is available
+                answer_evaluated_count += 1
+                if self.exact_match(extracted_answer, ref):
+                    exact_matches += 1
+                
+                f1 = self.f1_score(extracted_answer, ref)
+                f1_scores.append(f1)
             
             # Calculate supporting facts metrics
             sp_f1 = self.supporting_facts_f1(pred_sp, ref_sp)
@@ -148,7 +151,17 @@ class HotpotQAMetrics:
         
         total = len(self.predictions)
         metrics = {
-            "exact_match": exact_matches / total if total > 0 else 0.0,
+            "exact_match": exact_matches / answer_evaluated_count if answer_evaluated_count > 0 else 0.0,
+            "f1_score": sum(f1_scores) / len(f1_scores) if f1_scores else 0.0,
+            "supporting_facts_f1": sum(sp_f1_scores) / len(sp_f1_scores) if sp_f1_scores else 0.0,
+            "total_samples": float(total),
+            "answer_evaluated_samples": float(answer_evaluated_count)
+        }
+        
+        if answer_evaluated_count == 0:
+            metrics["note"] = "No answer labels available (test set) - only supporting facts evaluated"
+        
+        return metrics
             "f1_score": np.mean(f1_scores) if f1_scores else 0.0,
             "supporting_facts_f1": np.mean(sp_f1_scores) if sp_f1_scores else 0.0,
             "total_samples": total,

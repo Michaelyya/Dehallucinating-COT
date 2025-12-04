@@ -35,6 +35,12 @@ class HotpotQADataset(Dataset):
         if num_samples > 0:
             self.data = self.data[:num_samples]
         
+        # Check if answers are available (test set doesn't have answers)
+        has_answers = any('answer' in item for item in self.data[:min(10, len(self.data))])
+        if not has_answers:
+            print(f"⚠️  WARNING: No 'answer' field found in data - this appears to be the test set.")
+            print(f"   For evaluation with answer metrics, use the dev set: hotpot_dev_fullwiki_v1.json")
+        
         print(f"Loaded {len(self.data)} HotpotQA examples from {data_path}")
     
     def _flatten_context(self, context: List[List]) -> str:
@@ -164,14 +170,14 @@ def extract_answer(prediction: str) -> str:
     explanation_match = re.search(r'Explanation\s*:', prediction, re.IGNORECASE)
     if explanation_match:
         answer = prediction[:explanation_match.start()].strip()
-        if answer:
+        # Check if it's actually an answer or just the start of explanation
+        if answer and not answer.startswith(('1.', '2.', '3.', 'Evidence:', 'Reasoning:')):
             return answer
     
     # Fallback: extract from common patterns (for backward compatibility)
     patterns = [
         r'(?:final\s+)?answer\s*:\s*([^\n]+)',
         r'the\s+answer\s+is\s*[:]?\s*([^\n]+)',
-        r'^([^\n]+?)(?:\n|$)'  # First line if no pattern matches
     ]
     for pattern in patterns:
         match = re.search(pattern, prediction, re.IGNORECASE)
@@ -182,9 +188,19 @@ def extract_answer(prediction: str) -> str:
             if answer and answer.lower() not in ['none', 'n/a', 'unknown']:
                 return answer
     
-    # Last resort: return first line
+    # Try to extract from reasoning line (e.g., "Reasoning: The answer is X")
+    reasoning_match = re.search(r'Reasoning:\s*[^.]*?(?:answer|is)\s+(?:is\s+)?([^.\n]+)', prediction, re.IGNORECASE)
+    if reasoning_match:
+        answer = reasoning_match.group(1).strip()
+        if answer and len(answer) < 100:  # Reasonable answer length
+            return answer
+    
+    # Last resort: return first line only if it doesn't look like explanation
     first_line = prediction.split('\n')[0].strip()
-    return first_line if first_line else ""
+    if first_line and not first_line.startswith(('1.', '2.', '3.', 'Evidence:', 'Reasoning:', 'Explanation:')):
+        return first_line
+    
+    return ""
 
 
 def load_hotpotqa_dataset(
