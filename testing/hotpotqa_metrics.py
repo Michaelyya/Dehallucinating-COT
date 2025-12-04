@@ -161,12 +161,6 @@ class HotpotQAMetrics:
         if answer_evaluated_count == 0:
             metrics["note"] = "No answer labels available (test set) - only supporting facts evaluated"
         
-        return metrics{
-            "f1_score": np.mean(f1_scores) if f1_scores else 0.0,
-            "supporting_facts_f1": np.mean(sp_f1_scores) if sp_f1_scores else 0.0,
-            "total_samples": total,
-        }
-        
         return metrics
     
     def get_detailed_results(self) -> List[Dict[str, Any]]:
