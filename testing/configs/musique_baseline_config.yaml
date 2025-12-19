@@ -4,7 +4,7 @@ data:
   name: "MuSiQue"
   data_dir: "data/MuSiQue/musique_ans_v1.0_dev.jsonl"
   split: "dev"
-  num_samples: 100
+  num_samples: 20
   max_context_length: 4096
   max_question_length: 512
   max_explanation_length: 1024

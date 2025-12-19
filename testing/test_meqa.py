@@ -2,6 +2,7 @@ import os
 import json
 import argparse
 import yaml
+import re
 from typing import Dict, List, Any
 import torch
 from torch.utils.data import DataLoader
@@ -170,6 +171,11 @@ class MEQATester:
                                 short_answer = self.metrics.extract_answer_from_response(full_output)
                             except Exception:
                                 short_answer = ""
+                        
+                        # Extract explanation part (everything after "Explanation:")
+                        explanation_match = re.search(r'Explanation\s*:\s*(.*)', full_output, re.IGNORECASE | re.DOTALL)
+                        predicted_explanation = explanation_match.group(1).strip() if explanation_match else full_output
+                        
                         pred_dict = {
                             "example_id": batch["example_id"][i],
                             "question": batch["question"][i],
@@ -178,7 +184,8 @@ class MEQATester:
                             "answer": batch["answer"][i],
                             "explanation": batch["explanation"][i],
                             "reference_explanation": batch["reference_explanation"][i],
-                            "predicted_explanation": full_output,
+                            "predicted_explanation": predicted_explanation,
+                            "full_output": full_output,  # Keep full output for debugging
                         }
                         
                         # Add attention information if available
