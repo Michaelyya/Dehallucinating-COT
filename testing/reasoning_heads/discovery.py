@@ -24,6 +24,14 @@ except ImportError:
     USE_COGNITIVE_MIRRORS = False
 from .head_scoring import HeadScorer, HeadScore, create_scorer
 
+# Try to import efficient scorers
+try:
+    from .efficient_head_scoring import create_efficient_scorer
+    EFFICIENT_SCORERS_AVAILABLE = True
+except ImportError:
+    EFFICIENT_SCORERS_AVAILABLE = False
+    create_efficient_scorer = None
+
 
 @dataclass
 class ReasoningHead:
@@ -59,6 +67,23 @@ class ReasoningHeadDiscovery:
         scoring_config: Optional[Dict[str, Any]] = None,
         cache_dir: Optional[str] = None
     ):
+        """
+        Initialize the Reasoning Head Discovery system.
+
+        Args:
+            model: The transformer model
+            tokenizer: The tokenizer
+            backward_chaining_dir: Directory containing datasets
+            device: Device to run on ("cuda" or "cpu")
+            scoring_method: Method for scoring heads. Options:
+                - "ablation": Original brute-force method (slow)
+                - "activation": Activation-based scoring (~1000x faster)
+                - "gradient": Gradient-based scoring (~500x faster)
+                - "attention_pattern": Attention pattern analysis (~1000x faster)
+                - "combined": Multi-method combination (~300x faster)
+            scoring_config: Additional configuration for the scorer
+            cache_dir: Cache directory for models
+        """
         self.model = model
         self.tokenizer = tokenizer
         self.device = device
@@ -66,7 +91,7 @@ class ReasoningHeadDiscovery:
         self.scoring_method = scoring_method
         self.scoring_config = scoring_config or {}
         self.cache_dir = cache_dir
-        
+
         # Set cache directory if provided
         if cache_dir:
             import os
@@ -74,15 +99,36 @@ class ReasoningHeadDiscovery:
             os.environ["TRANSFORMERS_CACHE"] = cache_dir
             os.environ["HF_DATASETS_CACHE"] = cache_dir
             os.makedirs(cache_dir, exist_ok=True)
-        
-        # Initialize scorer
-        self.scorer = create_scorer(
-            scoring_method,
-            model,
-            tokenizer,
-            device,
-            **self.scoring_config
-        )
+
+        # Determine if using efficient scorer
+        efficient_methods = ["activation", "gradient", "attention_pattern", "combined"]
+        self.use_efficient_scorer = scoring_method in efficient_methods
+
+        if self.use_efficient_scorer:
+            if not EFFICIENT_SCORERS_AVAILABLE:
+                raise ImportError(
+                    f"Efficient scoring method '{scoring_method}' requires efficient_head_scoring module. "
+                    "Please ensure efficient_head_scoring.py is available."
+                )
+            print(f"[ReasoningHeadDiscovery] Using EFFICIENT scorer: {scoring_method}")
+            print(f"  Expected speedup: ~{{'activation': 1000, 'gradient': 500, 'attention_pattern': 1000, 'combined': 300}[scoring_method]}x over ablation")
+            self.scorer = create_efficient_scorer(
+                scoring_method,
+                model,
+                tokenizer,
+                device,
+                **self.scoring_config
+            )
+        else:
+            print(f"[ReasoningHeadDiscovery] Using standard scorer: {scoring_method}")
+            # Initialize scorer using original method
+            self.scorer = create_scorer(
+                scoring_method,
+                model,
+                tokenizer,
+                device,
+                **self.scoring_config
+            )
         
         # Resolve backward_chaining_dir path
         if not os.path.isabs(backward_chaining_dir):

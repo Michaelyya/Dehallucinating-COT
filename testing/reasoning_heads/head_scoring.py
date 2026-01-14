@@ -1438,12 +1438,53 @@ def create_scorer(
     device: str = "cuda",
     **kwargs
 ) -> HeadScorer:
-    if method == "ablation":
-        return AblationScorer(model, tokenizer, device, **kwargs)
-    elif method == "causal_patching":
-        return CausalPatchingScorer(model, tokenizer, device)
-    elif method == "mutual_info":
-        return MutualInfoScorer(model, tokenizer, device)
-    else:
-        raise ValueError(f"Unknown scoring method: {method}")
+    """
+    Factory function to create head scorers.
+
+    Available methods:
+    - "ablation": Original brute-force ablation (slow but direct)
+    - "causal_patching": Causal patching scorer
+    - "mutual_info": Mutual information scorer
+
+    EFFICIENT METHODS (use create_efficient_scorer for these):
+    - "activation": Activation-based scoring (~1000x faster)
+    - "gradient": Gradient-based scoring (~500x faster)
+    - "attention_pattern": Attention pattern analysis (~1000x faster)
+    - "combined": Multi-method combination (~300x faster)
+
+    For efficient methods, this function will automatically delegate to
+    create_efficient_scorer from the efficient_head_scoring module.
+    """
+    # Original methods
+    original_methods = {
+        "ablation": AblationScorer,
+        "causal_patching": CausalPatchingScorer,
+        "mutual_info": MutualInfoScorer,
+    }
+
+    if method in original_methods:
+        if method == "ablation":
+            return AblationScorer(model, tokenizer, device, **kwargs)
+        elif method == "causal_patching":
+            return CausalPatchingScorer(model, tokenizer, device)
+        elif method == "mutual_info":
+            return MutualInfoScorer(model, tokenizer, device)
+
+    # Efficient methods - delegate to efficient_head_scoring
+    efficient_methods = ["activation", "gradient", "attention_pattern", "combined"]
+    if method in efficient_methods:
+        try:
+            from .efficient_head_scoring import create_efficient_scorer
+            return create_efficient_scorer(method, model, tokenizer, device, **kwargs)
+        except ImportError as e:
+            raise ImportError(
+                f"Efficient scoring method '{method}' requires efficient_head_scoring module. "
+                f"Import error: {e}"
+            )
+
+    raise ValueError(
+        f"Unknown scoring method: {method}. "
+        f"Available original methods: {list(original_methods.keys())}. "
+        f"Available efficient methods: {efficient_methods}"
+    )
 

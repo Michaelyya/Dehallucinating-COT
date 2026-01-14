@@ -5,6 +5,7 @@ import argparse
 from typing import Dict, List, Any, Optional
 from dataclasses import dataclass
 import torch
+import numpy as np
 
 # Add parent directories to path
 script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -107,6 +108,50 @@ def format_meqa_example(example: Dict[str, Any], tokenizer) -> str:
 class MEQAAblationScorer(AblationScorer):
     """Ablation scorer specifically for MEQA dataset."""
     
+    def _simple_bleu(self, reference_tokens, candidate_tokens, n: int = 4) -> float:
+        """
+        Lightweight BLEU implementation (copied from head_scoring.simple_bleu)
+        to compare baseline vs ablated generations on MEQA.
+        """
+        if len(candidate_tokens) == 0 or len(reference_tokens) == 0:
+            return 0.0
+        
+        # Brevity penalty
+        if len(candidate_tokens) < len(reference_tokens):
+            bp = np.exp(1 - len(reference_tokens) / len(candidate_tokens))
+        else:
+            bp = 1.0
+        
+        precisions = []
+        for i in range(1, n + 1):
+            ref_ngrams = {}
+            for j in range(len(reference_tokens) - i + 1):
+                ngram = tuple(reference_tokens[j:j+i])
+                ref_ngrams[ngram] = ref_ngrams.get(ngram, 0) + 1
+            
+            cand_ngrams = {}
+            for j in range(len(candidate_tokens) - i + 1):
+                ngram = tuple(candidate_tokens[j:j+i])
+                cand_ngrams[ngram] = cand_ngrams.get(ngram, 0) + 1
+            
+            matches = 0
+            total = 0
+            for ngram, count in cand_ngrams.items():
+                total += count
+                if ngram in ref_ngrams:
+                    matches += min(count, ref_ngrams[ngram])
+            
+            if total == 0:
+                precisions.append(0.0)
+            else:
+                precisions.append(matches / total)
+        
+        if any(p == 0 for p in precisions):
+            return 0.0
+        
+        geometric_mean = np.exp(np.mean([np.log(p) for p in precisions]))
+        return bp * geometric_mean
+    
     def _format_example(self, example: Dict[str, Any]) -> str:
         """Format MEQA example for model input."""
         return format_meqa_example(example, self.tokenizer)
@@ -118,10 +163,21 @@ class MEQAAblationScorer(AblationScorer):
         ablated_heads: Optional[List[tuple]] = None,
         debug: bool = False
     ) -> Dict[str, float]:
-        """Evaluate MEQA examples using accuracy (exact match on answer)."""
+        """
+        Evaluate MEQA examples using both exact-match accuracy and BLEU.
+        
+        Returns:
+            {
+                "accuracy": exact_match_accuracy,
+                "bleu": average_bleu,
+                "correct": n_correct,
+                "total": n_total,
+            }
+        """
         correct = 0
         total = 0
-        all_outputs = []
+        bleu_scores: List[float] = []
+        debug_printed = False
         
         for example in examples:
             try:
@@ -162,8 +218,6 @@ class MEQAAblationScorer(AblationScorer):
                     if len(generated_text_alt) > len(generated_text):
                         generated_text = generated_text_alt
                 
-                all_outputs.append(generated_text)
-                
                 # Get correct answer
                 correct_answer = example.get("answer", "")
                 if isinstance(correct_answer, list):
@@ -177,6 +231,25 @@ class MEQAAblationScorer(AblationScorer):
                 # Check correctness (normalized comparison)
                 is_correct = self._check_meqa_correctness(generated_answer, correct_answer)
                 
+                # BLEU between gold answer and generated answer
+                ref_tokens = str(correct_answer).lower().split()
+                cand_tokens = str(generated_answer).lower().split()
+                bleu = self._simple_bleu(ref_tokens, cand_tokens)
+                bleu_scores.append(bleu)
+                
+                # Optional debug print for the first example (both baseline and ablated)
+                if debug and not debug_printed:
+                    phase = "BASELINE" if not ablated_heads else "ABLATED"
+                    print("\n---------- MEQA Debug Example ----------")
+                    print(f"Phase     : {phase}")
+                    print(f"Question  : {example.get('question', '')}")
+                    print(f"Gold ans. : {correct_answer}")
+                    print(f"Model out : {generated_text}")
+                    print(f"Extracted : {generated_answer}")
+                    print(f"BLEU      : {bleu:.4f}")
+                    print("----------------------------------------\n")
+                    debug_printed = True
+                
                 if is_correct:
                     correct += 1
                 total += 1
@@ -187,9 +260,11 @@ class MEQAAblationScorer(AblationScorer):
                 continue
         
         accuracy = correct / total if total > 0 else 0.0
+        avg_bleu = float(np.mean(bleu_scores)) if bleu_scores else 0.0
         
         return {
             "accuracy": accuracy,
+            "bleu": avg_bleu,
             "correct": correct,
             "total": total
         }
@@ -258,6 +333,85 @@ class MEQAAblationScorer(AblationScorer):
         return False
 
 
+    def score_all_heads(
+        self,
+        examples: List[Dict[str, Any]],
+        subtask_name: str,
+        n_layers: Optional[int] = None,
+        n_heads: Optional[int] = None,
+        max_layers: Optional[int] = None,
+        max_heads_per_layer: Optional[int] = None
+    ) -> List[HeadScore]:
+        """
+        Custom head scoring for MEQA that uses a combined accuracy + BLEU metric
+        and prints detailed debug information for the first head.
+        """
+        if n_layers is None:
+            n_layers = getattr(self.model.config, 'num_hidden_layers',
+                               getattr(self.model.config, 'n_layers', 32))
+        if n_heads is None:
+            n_heads = getattr(self.model.config, 'num_attention_heads',
+                              getattr(self.model.config, 'n_heads', 32))
+        
+        # Limit scope for faster initial discovery
+        if max_layers is None:
+            max_layers = min(n_layers, 8)
+        if max_heads_per_layer is None:
+            max_heads_per_layer = min(n_heads, 8)
+        
+        total_heads = max_layers * max_heads_per_layer
+        
+        # Baseline metrics (with debug to see one example)
+        baseline_metrics = self._evaluate_subtask(
+            examples, subtask_name, ablated_heads=None, debug=True
+        )
+        baseline_acc = baseline_metrics.get("accuracy", 0.0)
+        baseline_bleu = baseline_metrics.get("bleu", 0.0)
+        
+        from tqdm import tqdm
+        scores: List[HeadScore] = []
+        first_head = True
+        
+        for layer in tqdm(range(max_layers), desc="  Layers", leave=False):
+            for head in range(max_heads_per_layer):
+                try:
+                    debug = first_head  # print ablated debug only for first head
+                    ablated_metrics = self._evaluate_subtask(
+                        examples, subtask_name, ablated_heads=[(layer, head)], debug=debug
+                    )
+                    ablated_acc = ablated_metrics.get("accuracy", 0.0)
+                    ablated_bleu = ablated_metrics.get("bleu", 0.0)
+                    
+                    # Combined score: drop in accuracy + drop in BLEU
+                    acc_drop = baseline_acc - ablated_acc
+                    bleu_drop = baseline_bleu - ablated_bleu
+                    score_value = acc_drop + bleu_drop
+                    
+                    confidence = min(len(examples) / 10.0, 1.0)
+                    
+                    scores.append(
+                        HeadScore(
+                            layer=layer,
+                            head=head,
+                            score=score_value,
+                            confidence=confidence,
+                            method="ablation",
+                            metadata={
+                                "baseline_accuracy": baseline_acc,
+                                "baseline_bleu": baseline_bleu,
+                                "ablated_accuracy": ablated_acc,
+                                "ablated_bleu": ablated_bleu,
+                                "n_examples": len(examples),
+                            },
+                        )
+                    )
+                    first_head = False
+                except Exception:
+                    continue
+        
+        scores.sort(key=lambda x: x.score, reverse=True)
+        return scores
+
 def discover_heads_for_meqa(
     model,
     tokenizer,
@@ -318,9 +472,32 @@ def discover_heads_for_meqa(
     print(f"\nResults for MEQA:")
     print(f"  Total heads scored: {len(scores)}")
     print(f"  Heads with positive score: {len(positive_scores)}")
+    
+    # Print global baseline metrics (same for all heads)
+    if scores:
+        any_meta = scores[0].metadata or {}
+        baseline_acc = any_meta.get("baseline_accuracy", 0.0)
+        baseline_bleu = any_meta.get("baseline_bleu", 0.0)
+        print(f"  Baseline accuracy (no ablation): {baseline_acc:.4f}")
+        print(f"  Baseline BLEU     (no ablation): {baseline_bleu:.4f}")
+    
+    # Print per-head ablation metrics for inspection
+    print("\n  Per-head metrics (baseline vs ablated):")
+    for s in scores:
+        meta = s.metadata or {}
+        b_acc = meta.get("baseline_accuracy", 0.0)
+        b_bleu = meta.get("baseline_bleu", 0.0)
+        a_acc = meta.get("ablated_accuracy", 0.0)
+        a_bleu = meta.get("ablated_bleu", 0.0)
+        print(
+            f"    Layer {s.layer:2d}, Head {s.head:2d}: "
+            f"score={s.score:+.4f} | "
+            f"acc: {b_acc:.4f} -> {a_acc:.4f}, "
+            f"bleu: {b_bleu:.4f} -> {a_bleu:.4f}"
+        )
+    
     if positive_scores:
-        print(f"  Score range: {positive_scores[-1].score:.4f} to {positive_scores[0].score:.4f}")
-        print(f"  Top 5 heads:")
+        print(f"\n  Top 5 positive-score heads:")
         for i, s in enumerate(positive_scores[:5]):
             print(f"    {i+1}. Layer {s.layer}, Head {s.head}: score={s.score:.4f}")
     
